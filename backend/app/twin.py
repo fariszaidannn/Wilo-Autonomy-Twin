@@ -257,6 +257,7 @@ class Twin:
                     day = day + timedelta(days=7 - day.weekday())
                 self.sim_time = datetime(day.year, day.month, day.day, hh, mm)
                 self.smoothed = None
+                self.crowded = {p.id: False for p in self.b.pumps}   # a new time of day starts a fresh watch
                 self.last_forecast_check = None
             if topology_changed:
                 self.rec = None   # a plan made for the old plant is stale

@@ -1,5 +1,6 @@
 // Usage & data tab: totals, hourly profile, 24 h forecast band, back-test, data source and CSV import.
-import { get, post, postForm, ZONE_HEX, nameOf } from "./api.js";
+import { get, post, postForm } from "./api.js";
+import { zoneHex, label } from "./topo.js";
 import { t, getLang, onLang, num, pct, hhmm, dateTime } from "./i18n.js";
 import { lineChart } from "./charts.js";
 import { esc, statusPill } from "./ui.js";
@@ -37,7 +38,7 @@ function render() {
     <div class="charts2">
       <div class="panel"><h3>${esc(t("u.accuracy"))}</h3>
         <table style="margin-top:8px"><thead><tr><th>${esc(t("u.acc.zone"))}</th><th class="r">${esc(t("u.acc.mape"))}</th><th class="r">${esc(t("u.acc.y"))}</th><th class="r">${esc(t("u.acc.sigma"))}</th></tr></thead>
-        <tbody>${Object.entries(accuracy.zones).map(([z, a]) => `<tr><td><b>${z}</b>&thinsp;·&ensp;${esc(nameOf(getLang(), z, z))}</td><td class="r"><b>${pct(a.mape, 1)}</b></td><td class="r">${pct(a.mape_yesterday, 1)}</td><td class="r">${pct(a.within_1sigma, 0)}</td></tr>`).join("")}</tbody></table>
+        <tbody>${Object.entries(accuracy.zones).map(([z, a]) => `<tr><td><b>${z}</b>&thinsp;·&ensp;${esc(label(z))}</td><td class="r"><b>${pct(a.mape, 1)}</b></td><td class="r">${pct(a.mape_yesterday, 1)}</td><td class="r">${pct(a.within_1sigma, 0)}</td></tr>`).join("")}</tbody></table>
         <p class="panel-note" style="margin-top:8px">${esc(getLang() === "tr" ? "Simüle veride yöntemi gösterir; gerçek bir bina hakkında bir şey söylemez." : "Demonstrates the method on simulated data; says nothing about a real building.")}</p>
       </div>
       <div class="panel"><h3>${esc(t("u.source"))}</h3>
@@ -61,7 +62,7 @@ function render() {
     </div>`).replace(/ · /g, "\u2009\u00b7\u2002");
   lineChart($("u-profile"), {
     x: [...Array(24).keys()], xFmt: (h) => `${String(h).padStart(2, "0")}:00`, yFmt: (v) => num(v, v < 10 ? 1 : 0), yMin: 0, height: 220,
-    series: zones.map((z) => ({ name: z, color: ZONE_HEX[z], values: summary.zones[z].hourly_profile })),
+    series: zones.map((z) => ({ name: z, color: zoneHex(z), values: summary.zones[z].hourly_profile })),
   });
   const pts = forecast.points;
   lineChart($("u-forecast"), {
@@ -89,4 +90,5 @@ export function initUsage() {
   const open = () => { if (!loaded) { loaded = true; load().catch((e) => { $("usage").innerHTML = `<p class="toast err">${esc(e.message)}</p>`; }); } };
   window.addEventListener("wat:tab", (e) => { if (e.detail === "usage") open(); });
   onLang(render);
+  window.addEventListener("wat:topo", () => { if (loaded) load().catch(() => {}); });
 }

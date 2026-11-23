@@ -1,11 +1,12 @@
 // Scenario lab: time to threshold per zone (best / base / worst), with and without the balancer.
-import { get, post, PUMP_HEX, ZONE_HEX, nameOf } from "./api.js";
+import { get, post } from "./api.js";
+import { topo, pumpHex, zoneHex, label } from "./topo.js";
 import { t, getLang, onLang, num, pct, dur } from "./i18n.js";
 import { lineChart } from "./charts.js";
 import { esc, statusPill } from "./ui.js";
 
 const $ = (id) => document.getElementById(id);
-let type = "power_outage", horizon = 12, pump = "PB", gen = false;
+let type = "power_outage", horizon = 12, pump = null, gen = false;
 let last = null, cfg = null;
 
 function assumptionsTr(r) {
@@ -30,7 +31,8 @@ function renderForm() {
   $("s-type").innerHTML = types.map((k) => `<button type="button" data-type="${k}" aria-pressed="${k === type}">${esc(t("s.types")[k])}</button>`).join("");
   $("s-horizon").innerHTML = [6, 12, 24].map((h) => `<button type="button" data-h="${h}" aria-pressed="${h === horizon}">${h} ${t("h")}</button>`).join("");
   let opts = "";
-  if (type === "pump_failure") opts = `<h3>${esc(t("s.pump"))}</h3><div class="seg" id="s-pump">${["PA", "PB"].map((p) => `<button type="button" data-p="${p}" aria-pressed="${p === pump}">${esc(nameOf(getLang(), p, p === "PA" ? "Booster Pump A" : "Booster Pump B"))}</button>`).join("")}</div>`;
+  if (!topo.pumps.includes(pump)) pump = topo.pumps[topo.pumps.length - 1];
+  if (type === "pump_failure") opts = `<h3>${esc(t("s.pump"))}</h3><div class="seg" id="s-pump">${topo.pumps.map((p) => `<button type="button" data-p="${p}" aria-pressed="${p === pump}">${esc(label(p))}</button>`).join("")}</div>`;
   if (type === "power_outage") opts = `<h3>&nbsp;</h3><label class="switch"><span>${esc(t("s.gen"))}</span><input type="checkbox" id="s-gen" ${gen ? "checked" : ""}></label>`;
   $("s-opts").innerHTML = opts;
   $("s-type").onclick = (e) => { const b = e.target.closest("[data-type]"); if (b) { type = b.dataset.type; renderForm(); } };
@@ -52,7 +54,7 @@ function render(r) {
   const rows = r.zones.map((z) => {
     const tt = z.time_to_threshold_min;
     const cell = (v) => (v == null ? `<span class="muted">${esc(t("s.never"))}</span>` : `<b>${esc(dur(v))}</b>`);
-    return `<tr><td><b>${z.zone}</b>&thinsp;·&ensp;${esc(nameOf(getLang(), z.zone, z.name))}<br><span class="muted">${esc(t("priority", { n: z.priority }))}</span></td>
+    return `<tr><td><b>${z.zone}</b>&thinsp;·&ensp;${esc(label(z.zone))}<br><span class="muted">${esc(t("priority", { n: z.priority }))}</span></td>
       <td class="r">${cell(tt.worst)}</td><td class="r">${cell(tt.base)}</td><td class="r">${cell(tt.best)}</td><td class="r">${cell(z.time_to_threshold_with_balancer_min)}</td>
       <td class="r">${num(z.lowest_pressure_bar)} bar<br><span class="muted">min ${num(z.min_pressure_bar)}</span></td>
       <td class="r">${statusPill(tone(z.demand_met), pct(z.demand_met, 0))}</td></tr>`;
@@ -80,15 +82,16 @@ function render(r) {
     x, xFmt: xf, yFmt: (v) => `${Math.round(v)}%`, yMin: 0, yMax: 100, height: 220,
     series: [
       { name: getLang() === "tr" ? "temel" : "base case", color: "#0e1a2b", values: base.map((p) => p.tank_pct) },
-      { name: t("s.with"), color: PUMP_HEX.PA, dash: true, values: r.series.base_with_balancer.map((p) => p.tank_pct) },
+      { name: t("s.with"), color: pumpHex(topo.pumps[0]), dash: true, values: r.series.base_with_balancer.map((p) => p.tank_pct) },
     ],
     bands: [{ color: "#0e1a2b", lo: r.series.worst.map((p) => p.tank_pct), hi: r.series.best.map((p) => p.tank_pct) }],
     legendExtra: [{ name: t("s.band"), color: "#0e1a2b", cls: "band" }],
   });
   lineChart($("s-press"), {
     x, xFmt: xf, yFmt: (v) => (+v).toFixed(1), yMin: 0, height: 220,
-    series: ["Z1", "Z2", "Z3"].map((z) => ({ name: z, color: ZONE_HEX[z], values: base.map((p) => p.pressure[z]) })),
-    hlines: [{ y: 1.5, label: "min Z1 / Z2", dash: true }, { y: 1.3, label: "min Z3", dash: true, color: "#6e8b00", start: true, below: true }],
+    series: r.zones.map((z) => z.zone).map((z) => ({ name: z, color: zoneHex(z), values: base.map((p) => p.pressure[z]) })),
+    hlines: Object.entries(r.zones.reduce((g, z) => { (g[z.min_pressure_bar] ||= []).push(z.zone); return g; }, {}))
+      .map(([v, ids], k) => ({ y: +v, label: `min ${ids.join(" / ")}`, dash: true, start: k % 2 === 1, below: k > 0 })),
   });
 }
 
@@ -107,4 +110,5 @@ export function initScenario() {
     } finally { btn.disabled = false; btn.textContent = t("s.run"); }
   };
   onLang(() => { renderForm(); if (last) render(last); });
+  window.addEventListener("wat:topo", () => { last = null; renderForm(); $("s-result").innerHTML = `<p class="empty">${esc(t("s.empty"))}</p>`; });
 }

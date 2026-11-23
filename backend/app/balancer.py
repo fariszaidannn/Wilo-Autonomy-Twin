@@ -77,6 +77,9 @@ def plan(b: Building, state: hy.State, inp: hy.Inputs, cv: dict, crowded: dict,
                 "reason": "This is a capacity problem, not a balancing problem."}
 
     loads = [before[p]["load_pct"] for p in live]
+    if max(loads) <= cfg["target_max_pct"]:
+        # Still flagged by hysteresis, but already within target: nothing worth moving.
+        return {**out, "status": "balanced", "headline": "Pumps are sharing the load; nothing to do."}
     if max(loads) - min(loads) < cfg["min_spread_pct"]:
         return {**out, "status": "crowded_no_safe_move",
                 "headline": "All pumps are equally busy; there is no pump with room to take load.",

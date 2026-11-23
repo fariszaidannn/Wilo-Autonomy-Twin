@@ -17,7 +17,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from . import db, simulator, usage
-from .config import load_building, load_mapping
+from .config import BUILDING_FILE, DEFAULT_BUILDING_FILE, ConfigError, check_raw, load_building, load_mapping
 from .twin import StalePlan, Twin
 
 FRONTEND = Path(__file__).resolve().parents[2] / "frontend"
@@ -64,8 +64,12 @@ class PlanBody(BaseModel):
 
 
 class AppState:
-    def __init__(self, start_clock: bool = True, warm_outage: bool = True, db_path: Path = db.DB_FILE):
-        self.b = load_building()
+    def __init__(self, start_clock: bool = True, warm_outage: bool = True, db_path: Path = db.DB_FILE,
+                 building_path: Path = BUILDING_FILE):
+        self.building_path = Path(building_path)
+        self.start_clock = start_clock
+        self.config_lock = threading.Lock()
+        self.b = load_building(self.building_path)
         self.con = db.connect(db_path)
         db.ensure_seeded(self.con, self.b)
         self.mapping = load_mapping()
@@ -85,6 +89,30 @@ class AppState:
         self.flows = self.repo.fetch_flows()
         self.provider = usage.DemandProvider(self.b, self.flows)
         self.twin.set_provider(self.provider)
+
+    def apply_building(self, raw: dict) -> list[str]:
+        """Validate, back up the old file, save, and rebuild everything that depends on the topology."""
+        errors, warnings, b = check_raw(raw)
+        if errors:
+            raise ConfigError("; ".join(errors), errors)
+        with self.config_lock:
+            backup = self.building_path.with_name("building.backup.json")
+            if self.building_path.exists():
+                backup.write_text(self.building_path.read_text(encoding="utf-8"), encoding="utf-8")
+            self.building_path.write_text(json.dumps(b.raw, indent=2, ensure_ascii=False), encoding="utf-8")
+            self.b = b
+            # Demo (simulated) usage is regenerated for the new zones; measured data is kept as it is.
+            if self.flows.empty or db.data_label(self.flows["source"]) == "SIMULATED":
+                db.reseed_demo(self.con, b)
+            self.repo = db.make_repository(self.con, self.mapping)
+            self.flows = self.repo.fetch_flows()
+            self.provider = usage.DemandProvider(b, self.flows)
+            old = self.twin
+            self.twin = Twin(b, self.con, self.provider)
+            old.stop()
+            if self.start_clock:
+                self.twin.start()
+        return warnings
 
     def _warm_outage(self):
         try:
@@ -119,12 +147,13 @@ class AppState:
                 self.outage["eval_message"] = f"Evaluation failed: {type(exc).__name__}: {exc}"
 
 
-def create_app(start_clock: bool = True, warm_outage: bool = True, db_path: Path = db.DB_FILE) -> FastAPI:
+def create_app(start_clock: bool = True, warm_outage: bool = True, db_path: Path = db.DB_FILE,
+               building_path: Path = BUILDING_FILE) -> FastAPI:
     holder: dict = {}
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
-        holder["s"] = AppState(start_clock, warm_outage, db_path)
+        holder["s"] = AppState(start_clock, warm_outage, db_path, building_path)
         yield
         holder["s"].twin.stop()
 
@@ -266,6 +295,27 @@ def create_app(start_clock: bool = True, warm_outage: bool = True, db_path: Path
     @app.get("/api/config")
     def config():
         return S().b.raw
+
+    # ---------- water-system editor (topology and connections) ----------
+    @app.post("/api/config/validate")
+    def config_validate(raw: dict):
+        errors, warnings, _ = check_raw(raw)
+        return {"ok": not errors, "errors": errors, "warnings": warnings}
+
+    @app.post("/api/config")
+    def config_save(raw: dict):
+        try:
+            warnings = S().apply_building(raw)
+        except ConfigError as exc:
+            raise HTTPException(422, exc.args[1] if len(exc.args) > 1 else [str(exc)])
+        return {"ok": True, "warnings": warnings, "config": S().b.raw}
+
+    @app.post("/api/config/restore")
+    def config_restore():
+        if not DEFAULT_BUILDING_FILE.exists():
+            raise HTTPException(404, "The demo building file is missing.")
+        warnings = S().apply_building(json.loads(DEFAULT_BUILDING_FILE.read_text(encoding="utf-8")))
+        return {"ok": True, "warnings": warnings, "config": S().b.raw}
 
     # ---------- outage planner (district) ----------
     def planner():

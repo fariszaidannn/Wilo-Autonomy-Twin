@@ -39,13 +39,19 @@
     <div class="split">
       <div class="stack">
         <div>
-          <div class="clock" id="clock"></div>
-          <h1 class="headline" id="b-headline" aria-live="polite">…</h1>
+          <p class="toast ok" id="b-flash" hidden aria-live="polite"></p>
+          <div class="head-row">
+            <h1 class="headline" id="b-headline" aria-live="polite">…</h1>
+            <button type="button" class="btn edit-btn" id="b-edit">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 18h6l8-8"/><circle cx="9" cy="18" r="2.6" fill="#fff"/><path d="M14.5 4.5l5 5"/><path d="M17 7l-2.5-2.5 2-2 2.5 2.5z" fill="currentColor"/></svg>
+              <span data-i18n="ed.open">Edit the water system</span></button>
+          </div>
           <p class="subline" id="b-subline"></p>
         </div>
         <div class="panel">
           <header><h2 data-i18n="b.system">Building water system</h2><span class="panel-note" data-i18n="b.system.note">Line width is flow. Line colour is the pump that feeds it.</span></header>
           <div id="schematic"></div>
+          <div class="player" id="player"></div>
         </div>
         <div class="panel">
           <header><h2 data-i18n="b.disturb">Disturbances and demand</h2><span class="panel-note" data-i18n="b.disturb.note">Simulated only</span></header>
@@ -82,6 +88,11 @@
   <!-- ================= USAGE ================= -->
   <section role="tabpanel" id="p-usage" aria-labelledby="t-usage" hidden>
     <div class="stack" id="usage"><p class="loading" data-i18n="loading">Loading…</p></div>
+  </section>
+
+  <!-- ================= WATER-SYSTEM EDITOR (a page of its own) ================= -->
+  <section id="p-editor" aria-labelledby="ed-title" hidden>
+    <div id="editor"><p class="loading" data-i18n="loading">Loading…</p></div>
   </section>
 
   <!-- ================= OUTAGE PLANNER ================= -->

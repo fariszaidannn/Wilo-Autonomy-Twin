@@ -16,6 +16,13 @@ def test_no_plan_when_balanced(b, state):
     assert r["status"] == "balanced" and "moves" not in r
 
 
+def test_hysteresis_flag_below_target_is_balanced(b, state):
+    # Pump A still flagged crowded (79% > 78% release) but under the 80% target: no advice.
+    demand = {"Z1": 8.0, "Z2": 15.7, "Z3": 4.8}
+    r = plan(b, state, demand)
+    assert r["status"] == "balanced" and "moves" not in r
+
+
 def test_worked_example_8_4(b, state):
     r = plan(b, state)
     assert r["status"] == "recommendation_ready"

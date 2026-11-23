@@ -1,0 +1,17 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "flat-type-hierarchy",
+        "value": "*",
+        "files": [
+          "frontend/index.html"
+        ],
+        "createdAt": "2026-11-23T13:46:09.438Z",
+        "reason": "Claude, from evidence: detector cannot resolve the /static/styles.css link (FastAPI static mount) and reads browser-default 16px headings; styles.css sets .headline 40px, h2 22px, h3 17px (1.8x and 1.3x steps)"
+      }
+    ]
+  }
+}
