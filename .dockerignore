@@ -1,0 +1,14 @@
+.git
+**/.venv
+**/__pycache__
+**/.pytest_cache
+backend/data/water_twin.db
+backend/data/outage/outage.db
+backend/data/outage/cache
+backend/tests
+notebooks
+.impeccable
+.gemini
+*.md
+*.png
+!frontend/**/*.png

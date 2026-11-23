@@ -1,12 +1,12 @@
 # Render Blueprint: New > Blueprint > pick this repo, or use the Deploy to Render link in README.
+# Builds from the repo root (no rootDir) so the frontend/ folder the backend serves is included.
 services:
   - type: web
     name: water-autonomy-twin
     runtime: python
     plan: free
-    rootDir: backend
-    buildCommand: pip install -r requirements-render.txt && python prewarm.py
-    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    buildCommand: pip install -r backend/requirements-render.txt && cd backend && python prewarm.py
+    startCommand: cd backend && uvicorn app.main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /
     autoDeployTrigger: commit
     envVars:
