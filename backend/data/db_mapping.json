@@ -1,0 +1,12 @@
+{
+  "enabled": false,
+  "db_path": "path/to/your_usage.sqlite",
+  "table": "usage",
+  "ts_col": "ts",
+  "zone_col": "zone",
+  "value_col": "value",
+  "value_kind": "flow_m3h",
+  "ts_format": "iso",
+  "occupancy_col": null,
+  "zone_aliases": {"ZONE-1": "Z1", "ZONE-2": "Z2", "ZONE-3": "Z3"}
+}

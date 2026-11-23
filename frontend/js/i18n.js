@@ -1,0 +1,292 @@
+// EN / TR strings. Dynamic sentences are composed here from structured API data,
+// so both languages say exactly the same thing.
+const S = {
+  en: {
+    brand: "Water Autonomy Twin",
+    "tab.building": "Building", "tab.scenario": "Scenario lab", "tab.usage": "Usage & data", "tab.planner": "Outage planner",
+    simulated: "SIMULATED DATA", mixed: "MIXED DATA", measured: "MEASURED DATA",
+    banner: "Decision support for operator review. This twin never sends commands to pumps or valves; “Apply” changes only the simulated allocation.",
+    foot: "Water AI Hackathon 2026 prototype. All figures come from synthetic data. Only Istanbul's 2022 annual consumption and district population are real inputs. No real-world accuracy is claimed.",
+    loading: "Loading…",
+    "b.system": "Building water system", "b.system.note": "Line width is flow. Line colour is the pump that feeds it.",
+    "b.disturb": "Disturbances and demand", "b.disturb.note": "Simulated only",
+    "b.trends": "Live trends", "b.trends.note": "Last 4 simulated hours",
+    "b.trend.load": "Pump load", "b.trend.pressure": "Zone pressure",
+    tank: "Tank", "tank.city": "City supply", "tank.in": "in", "tank.out": "out",
+    "ctl.pumps": "Pumps", "ctl.power": "Power and supply", "ctl.demand": "Demand", "ctl.clock": "Simulation clock",
+    "ctl.fail": "{p} failed", "ctl.grid": "Grid power", "ctl.gen": "Generator available", "ctl.city": "City water supply",
+    "ctl.all": "All zones", "ctl.zone": "{z} demand",
+    "ctl.run": "Run", "ctl.pause": "Pause", "ctl.reset": "Reset twin", "ctl.speed": "Speed",
+    "ctl.jump": "Jump to", "ctl.weekend": "Weekend noon",
+    "clock.speed": "{n} sim min / s", weekday: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
+    "pump.status": { Normal: "Normal", "Light load": "Light load", Crowded: "Crowded", Overloaded: "Overloaded", Failed: "Failed", "No power": "No power", "No suction": "No suction" },
+    "zone.ok": "In service", "zone.out": "No water", "zone.short": "Short {q} m³/h", "zone.shed": "Isolated (low tank)",
+    "zone.wanted": "wants {q} m³/h", priority: "Priority {n}", critical: "critical",
+    power: { grid: "Grid power", generator: "On generator", none: "No power" },
+    "lb.title": "Load balancer",
+    "lb.status": { balanced: "Balanced", recommendation_ready: "Recommendation ready", watch_peak_ahead: "Watch: peak ahead", settling: "Settling", cannot_balance: "Cannot balance", crowded_no_safe_move: "Crowded, no safe move" },
+    "lb.crowded": "{a} is crowded ({la}% ≥ {c}%) while {b} has room ({lb}%).",
+    "lb.forecast": "{a} is forecast to be crowded ({la}%) at {t}, while {b} has room ({lb}%).",
+    "lb.balanced": "Pumps are sharing the load. Nothing to do.",
+    "lb.paused": "Recommendation dismissed. Advice paused for {n} min.",
+    "lb.settling": "An approved change was applied. Watching for {n} more min before suggesting anything else.",
+    "lb.cannot": "Only one healthy, powered pump is left. This is a capacity problem, not a balancing problem.",
+    "lb.shortfall": "Demand exceeds capacity by {q} m³/h; the lowest-priority zones are curtailed first.",
+    "lb.nosafe": "No safe move exists. This is a capacity problem, not a balancing problem.",
+    "lb.move": "Move {q} m³/h (about {f}% of {z}’s flow) from {a} to {b} via crossover valve {v}.",
+    "lb.before": "Before", "lb.after": "After (predicted)", "lb.range": "After-load range at ±demand: {r}",
+    "lb.unserved": "Demand not served: {a} → {b} m³/h",
+    "lb.confidence": "Confidence", conf: { high: "high", medium: "medium", low: "low" },
+    "lb.checks": "Safety checks ({n}/5 passed)", "lb.steps": "Operator steps", "lb.why": "Why this plan",
+    "lb.check": [
+      "Receiver stays at or below {cap}%", "No pump above its max flow",
+      "Every zone in service stays in service at base demand (+{m} bar margin)",
+      "Every zone in service stays in service at high demand (+cv)",
+      "Allowed crossover piping only, within the {ramp}% ramp limit",
+    ],
+    "lb.step": [
+      "Confirm {b} is healthy and powered.",
+      "Open crossover valve {v} so {b} can feed {z}.",
+      "Shift {q} m³/h of {z} from {a} to {b} in {n} stage(s) of at most 10% of the zone flow, one every 2 minutes.",
+      "Watch {z} pressure stays at or above {p} bar.",
+    ],
+    "lb.step.last": "Roll back if any zone drops below its minimum pressure, or a pump goes above {c}% within 15 minutes.",
+    "lb.basis.current": "Based on the live load now.", "lb.basis.forecast": "Pre-emptive: based on the demand forecast for {t}.",
+    "lb.why.text": "{z} (priority {p}) is moved rather than a more critical zone. Every move is re-checked with the hydraulic model at base and high demand.",
+    "lb.operator": "Operator", "lb.note": "Note for the audit log",
+    "lb.approve": "Approve and apply in twin", "lb.dismiss": "Dismiss", "lb.rollback": "Roll back last change", "lb.reeval": "Re-evaluate now",
+    "lb.applied": "Applied in the twin and logged.", "lb.dismissed": "Dismissed and logged.", "lb.rolled": "Rolled back and logged.",
+    "lb.stale": "This recommendation no longer matches the plant. It was refreshed; review it again.",
+    "lb.recent": "Recent decisions", "lb.none": "No decisions yet.",
+    "lb.rollback.advised": "Problem while settling: consider rolling back.",
+    "lb.action": { apply: "approved", dismiss: "dismissed", rollback: "rolled back" },
+    "head.ok": "Every zone has water.", "head.out": "{zs} without water now.",
+    "head.short": "{zs} short of water now.", "head.crowded": "Every zone has water, but {a} is running at {l}% of its rated flow.",
+    "sub.ok": "Pumps {la}% and {lb}% of rated flow · tank {t}% · {power}",
+    "s.title": "Scenario lab", "s.note": "Starts from the live twin state", "s.event": "Event", "s.horizon": "Horizon",
+    "s.run": "Run scenario", "s.running": "Running…",
+    "s.empty": "Pick an event and run it to see when each zone would lose service.",
+    "s.types": { normal: "Normal", pump_failure: "Pump failure", power_outage: "Power outage", city_supply_cut: "City supply cut" },
+    "s.pump": "Failed pump", "s.gen": "Generator runs during the outage",
+    "s.first": "{z} loses service first, about {t} after the event (earliest {e}, latest {l}).",
+    "s.allok": "Every zone stays in service for the whole {h} h horizon in the base case.",
+    "s.beyond": "beyond the horizon", "s.never": "—",
+    "s.prep": "Preparation time", "s.prio": "Priority demand met", "s.total": "All demand met", "s.moves": "Balancer moves followed",
+    "s.without": "without balancer", "s.with": "with balancer",
+    "s.zone": "Zone", "s.earliest": "Earliest", "s.base": "Base", "s.latest": "Latest", "s.withlb": "With balancer",
+    "s.lowp": "Lowest pressure", "s.met": "Demand met",
+    "s.tankchart": "Tank level", "s.presschart": "Zone pressure (base case)", "s.assume": "Assumptions and limits",
+    "s.band": "best–worst range",
+    "u.tiles.day": "Water per day", "u.tiles.peak": "Peak flow", "u.tiles.avg": "Average flow", "u.tiles.lpd": "Litres per person per day",
+    "u.profile": "Hourly profile", "u.forecast": "Next 24 h forecast (all zones)", "u.accuracy": "Forecast back-test (last 7 days)",
+    "u.acc.zone": "Zone", "u.acc.mape": "Baseline error (MAPE)", "u.acc.y": "Same hour yesterday", "u.acc.sigma": "Within ±1σ",
+    "u.source": "Data source", "u.rows": "{n} readings", "u.repo": "Repository", "u.range": "Range",
+    "u.import": "Import usage CSV", "u.import.help": "Columns: ts, zone_id, flow_m3h or volume_m3, optional occupancy, source.",
+    "u.replace": "Replace simulated rows for imported zones", "u.upload": "Upload CSV", "u.template": "Download template",
+    "u.reseed": "Reset to demo data", "u.imported": "Imported {n} rows.", "u.flags": "Fallbacks",
+    "u.mean": "Forecast", "u.at": "at", "u.baseline": "Baseline: mean of the same hour-of-week over the last 8 weeks, ±1σ", "u.choose": "Choose CSV file", "u.nofile": "No file chosen",
+    "p.title": "District outage planner", "p.note": "XGBoost forecast + MILP tank allocation · 39 areas · 12 tanks",
+    "p.scenario": "Outage scenario", "p.custom": "Build an outage", "p.stored": "Stored scenarios",
+    "p.start": "Outage start", "p.duration": "Duration", "p.areas": "Affected areas", "p.levels": "Tank fill",
+    "p.all": "All", "p.none": "None", "p.policy": "Policy shown on the map", "p.plan": "Plan this outage",
+    "p.policies": { milp_xgb: "MILP + XGBoost", oracle: "Oracle", greedy: "Greedy" },
+    "p.policy.desc": { milp_xgb: "the product: forecast, then optimise", oracle: "ideal upper bound, uses actual demand", greedy: "baseline: largest first, nearest tank" },
+    "p.unserved": "Unserved share of actual demand",
+    "p.head": "{n} of {m} areas get no water; {s} of demand is unserved.",
+    "p.headok": "All {m} affected areas can be served from the tanks.",
+    "p.sub": "{start} · {dur} h · forecast {fc} m³ vs actual {act} m³ (forecast error {w})",
+    "p.insample": "Train-split scenario: the forecast is in-sample, so it is not a result.",
+    "p.area": "Area", "p.class": "Class", "p.fc": "Forecast m³", "p.act": "Actual m³", "p.tank": "Tank", "p.km": "km",
+    "p.noserve": "Not served", "p.tanks": "Tank load vs level", "p.evidence": "Model evidence (48 test scenarios, Nov–Dec 2022)",
+    "p.ev.policies": "Unserved demand by policy", "p.ev.duration": "Forecast error (WAPE) by outage length",
+    "p.ev.hour": "Hourly error (WAPE) by time of day", "p.ev.series": "Actual vs predicted, first test week",
+    "p.ev.importance": "What the model relies on (gain share)", "p.ev.shap": "SHAP impact (each dot is one hour)",
+    "p.ev.buffer": "With a 5% safety buffer (rejected)", "p.ev.nobuffer": "No buffer (final policy)",
+    "p.xgb": "XGBoost", "p.naive": "Naive (same hour last week)", "p.actual": "Actual",
+    "p.limits": "What may not be claimed", "p.loading": "Loading the outage database and the trained model…",
+    "p.evloading": "Running the 48-scenario test evaluation…", "p.error": "The outage planner is unavailable:",
+    "p.maptitle": "Which tank serves which area", "p.legend.unserved": "No water (not served)", "p.legend.unaffected": "Not affected",
+    "p.tip": "{d} · class {c}<br>forecast {f} m³ · actual {a} m³<br>{t}",
+    "p.shap.high": "high feature value", "p.shap.low": "low feature value",
+    "p.reproduced": "Reproduced in this app from your saved model: hourly WAPE {a} vs naive {b}.",
+    "chart.table": "Show as table", "chart.hide": "Hide table", "chart.time": "Time",
+    "min": "min", h: "h",
+  },
+  tr: {
+    brand: "Su Özerklik İkizi",
+    "tab.building": "Bina", "tab.scenario": "Senaryo laboratuvarı", "tab.usage": "Kullanım ve veri", "tab.planner": "Kesinti planlayıcı",
+    simulated: "SİMÜLE VERİ", mixed: "KARMA VERİ", measured: "ÖLÇÜLMÜŞ VERİ",
+    banner: "Operatör incelemesi için karar desteği. Bu ikiz pompalara veya vanalara hiçbir zaman komut göndermez; “Uygula” yalnızca simüle dağılımı değiştirir.",
+    foot: "Water AI Hackathon 2026 prototipi. Tüm rakamlar sentetik veriden gelir. Gerçek girdiler yalnızca İstanbul'un 2022 yıllık tüketimi ve ilçe nüfusudur. Gerçek dünya doğruluğu iddia edilmez.",
+    loading: "Yükleniyor…",
+    "b.system": "Bina su sistemi", "b.system.note": "Hat kalınlığı debiyi, hat rengi besleyen pompayı gösterir.",
+    "b.disturb": "Arızalar ve talep", "b.disturb.note": "Yalnızca simülasyon",
+    "b.trends": "Canlı eğilimler", "b.trends.note": "Son 4 simüle saat",
+    "b.trend.load": "Pompa yükü", "b.trend.pressure": "Bölge basıncı",
+    tank: "Depo", "tank.city": "Şebeke suyu", "tank.in": "giriş", "tank.out": "çıkış",
+    "ctl.pumps": "Pompalar", "ctl.power": "Enerji ve besleme", "ctl.demand": "Talep", "ctl.clock": "Simülasyon saati",
+    "ctl.fail": "{p} arızalı", "ctl.grid": "Şebeke elektriği", "ctl.gen": "Jeneratör hazır", "ctl.city": "Şebeke suyu",
+    "ctl.all": "Tüm bölgeler", "ctl.zone": "{z} talebi",
+    "ctl.run": "Başlat", "ctl.pause": "Duraklat", "ctl.reset": "İkizi sıfırla", "ctl.speed": "Hız",
+    "ctl.jump": "Saate git", "ctl.weekend": "Hafta sonu öğle",
+    "clock.speed": "saniyede {n} simüle dk", weekday: ["Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi", "Pazar"],
+    "pump.status": { Normal: "Normal", "Light load": "Düşük yük", Crowded: "Yoğun", Overloaded: "Aşırı yüklü", Failed: "Arızalı", "No power": "Enerji yok", "No suction": "Emiş yok" },
+    "zone.ok": "Hizmette", "zone.out": "Su yok", "zone.short": "{q} m³/sa eksik", "zone.shed": "Ayrıldı (depo düşük)",
+    "zone.wanted": "talep {q} m³/sa", priority: "Öncelik {n}", critical: "kritik",
+    power: { grid: "Şebeke elektriği", generator: "Jeneratörde", none: "Enerji yok" },
+    "lb.title": "Yük dengeleyici",
+    "lb.status": { balanced: "Dengeli", recommendation_ready: "Öneri hazır", watch_peak_ahead: "Dikkat: zirve yaklaşıyor", settling: "Oturuyor", cannot_balance: "Dengelenemez", crowded_no_safe_move: "Yoğun, güvenli hamle yok" },
+    "lb.crowded": "{a} yoğun (%{la} ≥ %{c}), {b} ise boşta (%{lb}).",
+    "lb.forecast": "{a} saat {t} civarında yoğunlaşacak (%{la}), {b} ise boşta (%{lb}).",
+    "lb.balanced": "Pompalar yükü paylaşıyor. Yapılacak bir şey yok.",
+    "lb.paused": "Öneri reddedildi. Tavsiyeler {n} dk duraklatıldı.",
+    "lb.settling": "Onaylanan değişiklik uygulandı. Yeni öneri vermeden önce {n} dk daha izleniyor.",
+    "lb.cannot": "Yalnızca bir sağlam ve enerjili pompa kaldı. Bu bir dengeleme değil, kapasite sorunudur.",
+    "lb.shortfall": "Talep kapasiteyi {q} m³/sa aşıyor; önce en düşük öncelikli bölgeler kısılır.",
+    "lb.nosafe": "Güvenli bir hamle yok. Bu bir dengeleme değil, kapasite sorunudur.",
+    "lb.move": "{z} debisinin {q} m³/sa’ini (yaklaşık %{f}) {v} geçiş vanası üzerinden {a}’dan {b}’ye aktarın.",
+    "lb.before": "Önce", "lb.after": "Sonra (tahmini)", "lb.range": "±talep altında sonraki yük aralığı: {r}",
+    "lb.unserved": "Karşılanmayan talep: {a} → {b} m³/sa",
+    "lb.confidence": "Güven", conf: { high: "yüksek", medium: "orta", low: "düşük" },
+    "lb.checks": "Güvenlik kontrolleri ({n}/5 geçti)", "lb.steps": "Operatör adımları", "lb.why": "Neden bu plan",
+    "lb.check": [
+      "Alıcı pompa %{cap} veya altında kalır", "Hiçbir pompa azami debisini aşmaz",
+      "Hizmetteki her bölge temel talepte hizmette kalır (+{m} bar pay)",
+      "Hizmetteki her bölge yüksek talepte hizmette kalır (+cv)",
+      "Yalnızca izinli geçiş boruları, %{ramp} rampa sınırı içinde",
+    ],
+    "lb.step": [
+      "{b} pompasının sağlam ve enerjili olduğunu doğrulayın.",
+      "{b} pompasının {z} bölgesini besleyebilmesi için {v} geçiş vanasını açın.",
+      "{z} debisinin {q} m³/sa’ini {a}’dan {b}’ye, her 2 dakikada bir, bölge debisinin en fazla %10’u olacak şekilde {n} adımda aktarın.",
+      "{z} basıncının {p} bar veya üzerinde kaldığını izleyin.",
+    ],
+    "lb.step.last": "15 dakika içinde herhangi bir bölge asgari basıncın altına düşerse veya bir pompa %{c}’i aşarsa geri alın.",
+    "lb.basis.current": "Şu anki canlı yüke dayanır.", "lb.basis.forecast": "Önleyici: saat {t} için talep tahminine dayanır.",
+    "lb.why.text": "Daha kritik bir bölge yerine {z} (öncelik {p}) aktarılır. Her hamle hidrolik modelle temel ve yüksek talepte yeniden kontrol edilir.",
+    "lb.operator": "Operatör", "lb.note": "Denetim kaydı için not",
+    "lb.approve": "Onayla ve ikizde uygula", "lb.dismiss": "Reddet", "lb.rollback": "Son değişikliği geri al", "lb.reeval": "Şimdi yeniden değerlendir",
+    "lb.applied": "İkizde uygulandı ve kaydedildi.", "lb.dismissed": "Reddedildi ve kaydedildi.", "lb.rolled": "Geri alındı ve kaydedildi.",
+    "lb.stale": "Bu öneri artık tesisle örtüşmüyor. Yenilendi; lütfen tekrar inceleyin.",
+    "lb.recent": "Son kararlar", "lb.none": "Henüz karar yok.",
+    "lb.rollback.advised": "Oturma sırasında sorun: geri almayı düşünün.",
+    "lb.action": { apply: "onaylandı", dismiss: "reddedildi", rollback: "geri alındı" },
+    "head.ok": "Tüm bölgelerde su var.", "head.out": "{zs} şu anda susuz.",
+    "head.short": "{zs} şu anda yetersiz su alıyor.", "head.crowded": "Tüm bölgelerde su var, ancak {a} anma debisinin %{l}’inde çalışıyor.",
+    "sub.ok": "Pompalar anma debisinin %{la} ve %{lb}’inde · depo %{t} · {power}",
+    "s.title": "Senaryo laboratuvarı", "s.note": "Canlı ikiz durumundan başlar", "s.event": "Olay", "s.horizon": "Süre",
+    "s.run": "Senaryoyu çalıştır", "s.running": "Çalışıyor…",
+    "s.empty": "Her bölgenin ne zaman hizmet dışı kalacağını görmek için bir olay seçip çalıştırın.",
+    "s.types": { normal: "Normal", pump_failure: "Pompa arızası", power_outage: "Elektrik kesintisi", city_supply_cut: "Şebeke suyu kesintisi" },
+    "s.pump": "Arızalı pompa", "s.gen": "Kesinti sırasında jeneratör çalışır",
+    "s.first": "{z} olaydan yaklaşık {t} sonra ilk hizmet dışı kalan bölge olur (en erken {e}, en geç {l}).",
+    "s.allok": "Temel durumda tüm bölgeler {h} saatlik süre boyunca hizmette kalır.",
+    "s.beyond": "süre sonrasında", "s.never": "—",
+    "s.prep": "Hazırlık süresi", "s.prio": "Öncelikli talebin karşılanan payı", "s.total": "Tüm talebin karşılanan payı", "s.moves": "Uygulanan dengeleyici hamleleri",
+    "s.without": "dengeleyicisiz", "s.with": "dengeleyiciyle",
+    "s.zone": "Bölge", "s.earliest": "En erken", "s.base": "Temel", "s.latest": "En geç", "s.withlb": "Dengeleyiciyle",
+    "s.lowp": "En düşük basınç", "s.met": "Karşılanan talep",
+    "s.tankchart": "Depo seviyesi", "s.presschart": "Bölge basıncı (temel durum)", "s.assume": "Varsayımlar ve sınırlar",
+    "s.band": "en iyi–en kötü aralığı",
+    "u.tiles.day": "Günlük su", "u.tiles.peak": "Zirve debi", "u.tiles.avg": "Ortalama debi", "u.tiles.lpd": "Kişi başı günlük litre",
+    "u.profile": "Saatlik profil", "u.forecast": "Sonraki 24 saat tahmini (tüm bölgeler)", "u.accuracy": "Tahmin geri testi (son 7 gün)",
+    "u.acc.zone": "Bölge", "u.acc.mape": "Temel model hatası (MAPE)", "u.acc.y": "Dünün aynı saati", "u.acc.sigma": "±1σ içinde",
+    "u.source": "Veri kaynağı", "u.rows": "{n} okuma", "u.repo": "Depo", "u.range": "Aralık",
+    "u.import": "Kullanım CSV’si içe aktar", "u.import.help": "Sütunlar: ts, zone_id, flow_m3h veya volume_m3, isteğe bağlı occupancy, source.",
+    "u.replace": "İçe aktarılan bölgelerin simüle satırlarını değiştir", "u.upload": "CSV yükle", "u.template": "Şablonu indir",
+    "u.reseed": "Demo verisine dön", "u.imported": "{n} satır içe aktarıldı.", "u.flags": "Yedek yöntemler",
+    "u.mean": "Tahmin", "u.at": "saat", "u.baseline": "Temel model: son 8 haftada haftanın aynı saatinin ortalaması, ±1σ", "u.choose": "CSV dosyası seç", "u.nofile": "Dosya seçilmedi",
+    "p.title": "İlçe kesinti planlayıcı", "p.note": "XGBoost tahmini + MILP depo ataması · 39 ilçe · 12 depo",
+    "p.scenario": "Kesinti senaryosu", "p.custom": "Kesinti oluştur", "p.stored": "Kayıtlı senaryolar",
+    "p.start": "Kesinti başlangıcı", "p.duration": "Süre", "p.areas": "Etkilenen ilçeler", "p.levels": "Depo doluluğu",
+    "p.all": "Tümü", "p.none": "Hiçbiri", "p.policy": "Haritada gösterilen politika", "p.plan": "Bu kesintiyi planla",
+    "p.policies": { milp_xgb: "MILP + XGBoost", oracle: "Kâhin (Oracle)", greedy: "Açgözlü (Greedy)" },
+    "p.policy.desc": { milp_xgb: "ürün: önce tahmin, sonra optimizasyon", oracle: "ideal üst sınır, gerçek talebi kullanır", greedy: "temel: en büyük önce, en yakın depo" },
+    "p.unserved": "Gerçek talebin karşılanmayan payı",
+    "p.head": "{m} ilçeden {n} tanesi su alamıyor; talebin {s} kadarı karşılanmıyor.",
+    "p.headok": "Etkilenen {m} ilçenin tamamı depolardan beslenebilir.",
+    "p.sub": "{start} · {dur} sa · tahmin {fc} m³, gerçek {act} m³ (tahmin hatası {w})",
+    "p.insample": "Eğitim kümesi senaryosu: tahmin örneklem içidir, sonuç olarak sunulamaz.",
+    "p.area": "İlçe", "p.class": "Sınıf", "p.fc": "Tahmin m³", "p.act": "Gerçek m³", "p.tank": "Depo", "p.km": "km",
+    "p.noserve": "Karşılanmıyor", "p.tanks": "Depo yükü ve seviyesi", "p.evidence": "Model kanıtı (48 test senaryosu, Kasım–Aralık 2022)",
+    "p.ev.policies": "Politikaya göre karşılanmayan talep", "p.ev.duration": "Kesinti süresine göre tahmin hatası (WAPE)",
+    "p.ev.hour": "Günün saatine göre saatlik hata (WAPE)", "p.ev.series": "Gerçek ve tahmin, ilk test haftası",
+    "p.ev.importance": "Modelin dayandığı özellikler (kazanç payı)", "p.ev.shap": "SHAP etkisi (her nokta bir saat)",
+    "p.ev.buffer": "%5 güvenlik payıyla (reddedildi)", "p.ev.nobuffer": "Paysız (nihai politika)",
+    "p.xgb": "XGBoost", "p.naive": "Naif (geçen haftanın aynı saati)", "p.actual": "Gerçek",
+    "p.limits": "İddia edilemeyecekler", "p.loading": "Kesinti veritabanı ve eğitilmiş model yükleniyor…",
+    "p.evloading": "48 senaryoluk test değerlendirmesi çalışıyor…", "p.error": "Kesinti planlayıcı kullanılamıyor:",
+    "p.maptitle": "Hangi depo hangi ilçeye hizmet veriyor", "p.legend.unserved": "Su yok (karşılanmıyor)", "p.legend.unaffected": "Etkilenmedi",
+    "p.tip": "{d} · sınıf {c}<br>tahmin {f} m³ · gerçek {a} m³<br>{t}",
+    "p.shap.high": "yüksek özellik değeri", "p.shap.low": "düşük özellik değeri",
+    "p.reproduced": "Kaydedilmiş modelinizden bu uygulamada yeniden üretildi: saatlik WAPE {a}, naif {b}.",
+    "chart.table": "Tablo olarak göster", "chart.hide": "Tabloyu gizle", "chart.time": "Zaman",
+    "min": "dk", h: "sa",
+  },
+};
+
+// Static texts sent by the API (limits, assumptions) in Turkish, matched by their English start.
+const TR_LIMITS = [
+  "Tüm veriler sentetiktir. Gerçek girdiler yalnızca 2022 yıllık tüketimi ve ilçe nüfusudur.",
+  "Depolar, koordinatlar, mesafeler, bağlantılar, saatlik profiller, sıcaklık, tatiller ve senaryolar simülasyon varsayımıdır; İSKİ işletme verisi değildir.",
+  "Yalnızca tüm ilçe ataması: boru, basınç veya hidrolik kayıp yok. Bir ilçe depolar arasında bölünmez.",
+  "Depo seviyesi kullanılabilir hacim olarak alınır; asgari doluluk uygulanmaz (defterdeki gibi).",
+  "Bir yıllık veri; test ayları (Kasım ve Aralık) yazı içermez.",
+  "48 test senaryosu: %3,80 ile %3,68 küçük bir farktır, “aynı” değildir.",
+  "Eğitim senaryoları örneklem içi tahmin edilir; yalnızca test sonuçları sonuçtur.",
+  "Greedy gerçek talep ile hesaplanır, bu yüzden onunla karşılaştırma ihtiyatlıdır.",
+];
+
+let lang = "en";
+try { lang = localStorage.getItem("wat.lang") === "tr" ? "tr" : "en"; } catch { /* storage blocked */ }
+const urlLang = new URLSearchParams(location.search).get("lang");
+if (urlLang === "tr" || urlLang === "en") lang = urlLang;
+const listeners = new Set();
+
+export function getLang() { return lang; }
+export function setLang(l) {
+  lang = l === "tr" ? "tr" : "en";
+  try { localStorage.setItem("wat.lang", lang); } catch { /* ignore */ }
+  document.documentElement.lang = lang;
+  applyStatic();
+  listeners.forEach((fn) => fn(lang));
+}
+export function onLang(fn) { listeners.add(fn); }
+
+export function t(key, vars) {
+  let s = S[lang][key] ?? S.en[key] ?? key;
+  if (typeof s === "string" && vars) s = s.replace(/\{(\w+)\}/g, (_, k) => (vars[k] ?? `{${k}}`));
+  return typeof s === "string" ? s.replace(/ · /g, "\u2009\u00b7\u2002") : s;
+}
+export function tf(tpl, vars) { return tpl.replace(/\{(\w+)\}/g, (_, k) => (vars[k] ?? `{${k}}`)); }
+
+export function trLimit(enText, i) { return lang === "tr" && TR_LIMITS[i] ? TR_LIMITS[i] : enText; }
+
+export function applyStatic() {
+  document.querySelectorAll("[data-i18n]").forEach((el) => { el.textContent = t(el.dataset.i18n); });
+  document.querySelectorAll("[data-lang]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.lang === lang)));
+}
+
+const loc = () => (lang === "tr" ? "tr-TR" : "en-GB");
+export function num(v, d = 1) {
+  if (v === null || v === undefined || Number.isNaN(v)) return "—";
+  return Number(v).toLocaleString(loc(), { minimumFractionDigits: d, maximumFractionDigits: d });
+}
+export function pct(v, d = 0) {
+  if (v === null || v === undefined || Number.isNaN(v)) return "—";
+  const s = (v * 100).toLocaleString(loc(), { minimumFractionDigits: d, maximumFractionDigits: d });
+  return lang === "tr" ? `%${s}` : `${s}%`;
+}
+export function pctRaw(v, d = 0) { return pct(v / 100, d); }
+export function dur(min) {
+  if (min === null || min === undefined) return "—";
+  const m = Math.round(min);
+  const h = Math.floor(m / 60), r = m % 60;
+  if (!h) return `${r} ${t("min")}`;
+  return `${h} ${t("h")} ${String(r).padStart(2, "0")} ${t("min")}`;
+}
+export function hhmm(iso) { return iso ? iso.slice(11, 16) : "—"; }
+export function dateTime(iso) {
+  const d = new Date(iso);
+  return d.toLocaleString(loc(), { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+}

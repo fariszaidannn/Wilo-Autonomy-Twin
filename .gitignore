@@ -1,0 +1,16 @@
+.venv/
+__pycache__/
+.pytest_cache/
+*.pyc
+backend/data/water_twin.db
+backend/data/outage/outage.db
+backend/data/outage/cache/
+node_modules/
+
+# design-skill working material and local tool config
+.impeccable/review/
+.impeccable/mocks/
+.impeccable/decision/
+.impeccable/questions/
+.impeccable/config.local.json
+.gemini/
