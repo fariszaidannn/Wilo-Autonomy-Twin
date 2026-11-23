@@ -3,20 +3,29 @@
   "timezone_offset_h": 3,
   "tank": {
     "id": "TK1",
-    "name": "Apartman",
+    "name": "Building tank",
     "capacity_m3": 120,
     "dead_volume_m3": 6,
     "initial_volume_m3": 96,
     "city_inflow_max_m3h": 24,
     "priority_reserve_pct": {
-      "2": 15,
-      "3": 35
+      "3": 35,
+      "2": 15
     }
   },
   "pumps": [
     {
       "id": "PA",
       "name": "Booster Pump A",
+      "rated_flow_m3h": 30,
+      "max_flow_m3h": 36,
+      "shutoff_head_m": 60,
+      "rated_head_m": 45,
+      "efficiency": 0.65
+    },
+    {
+      "id": "PB",
+      "name": "Booster Pump B",
       "rated_flow_m3h": 30,
       "max_flow_m3h": 36,
       "shutoff_head_m": 60,
@@ -33,23 +42,24 @@
   "zones": [
     {
       "id": "Z1",
-      "name": "1. Kat",
+      "name": "Ground to L2 · clinic and emergency",
       "priority": 1,
       "elevation_m": 6,
       "min_pressure_bar": 1.5,
-      "setpoint_bar": 3,
+      "setpoint_bar": 3.0,
       "min_flow_ratio": 0.9,
       "friction_k": 0.01,
       "buffer_m3": 0.4,
       "allowed_pumps": [
-        "PA"
+        "PA",
+        "PB"
       ],
       "crossover_valve": "XV-1",
       "occupancy": 350
     },
     {
       "id": "Z2",
-      "name": "2. Kat",
+      "name": "L3 to L6 · classrooms and labs",
       "priority": 2,
       "elevation_m": 15,
       "min_pressure_bar": 1.5,
@@ -58,56 +68,39 @@
       "friction_k": 0.00862,
       "buffer_m3": 0.5,
       "allowed_pumps": [
-        "PA"
+        "PA",
+        "PB"
       ],
       "crossover_valve": "XV-2",
       "occupancy": 900
     },
     {
       "id": "Z3",
-      "name": "3. Kat",
-      "priority": 2,
-      "elevation_m": 25,
+      "name": "L7 to L10 · dormitory and offices",
+      "priority": 3,
+      "elevation_m": 28,
       "min_pressure_bar": 1.3,
       "setpoint_bar": 2.5,
       "min_flow_ratio": 0.9,
       "friction_k": 0.02,
       "buffer_m3": 0.3,
       "allowed_pumps": [
-        "PA"
+        "PA",
+        "PB"
       ],
       "crossover_valve": "XV-3",
       "occupancy": 450
-    },
-    {
-      "id": "Z4",
-      "name": "4. Kat",
-      "priority": 2,
-      "elevation_m": 35,
-      "min_pressure_bar": 1.5,
-      "setpoint_bar": 2.5,
-      "min_flow_ratio": 0.9,
-      "friction_k": 0.16,
-      "buffer_m3": 0.3,
-      "allowed_pumps": [
-        "PA"
-      ],
-      "crossover_valve": "XV-4",
-      "occupancy": 100
     }
   ],
   "default_allocation": {
     "Z1": {
-      "PA": 1
+      "PA": 1.0
     },
     "Z2": {
-      "PA": 1
+      "PA": 1.0
     },
     "Z3": {
-      "PA": 1
-    },
-    "Z4": {
-      "PA": 1
+      "PB": 1.0
     }
   },
   "balancer": {
@@ -205,7 +198,7 @@
         "profile": "classroom"
       },
       "Z3": {
-        "peak_m3h": 12,
+        "peak_m3h": 12.0,
         "weekend_factor": 1.15,
         "shape": [
           0.15,
@@ -234,37 +227,6 @@
           0.25
         ],
         "profile": "residential"
-      },
-      "Z4": {
-        "peak_m3h": 5,
-        "profile": "residential",
-        "shape": [
-          0.15,
-          0.1,
-          0.08,
-          0.08,
-          0.1,
-          0.25,
-          0.7,
-          1.0,
-          0.75,
-          0.45,
-          0.4,
-          0.383,
-          0.383,
-          0.4,
-          0.4,
-          0.45,
-          0.55,
-          0.7,
-          0.85,
-          0.95,
-          0.9,
-          0.7,
-          0.45,
-          0.25
-        ],
-        "weekend_factor": 1.15
       }
     }
   }

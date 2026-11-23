@@ -5,6 +5,7 @@ command to a pump or valve.
 """
 from __future__ import annotations
 
+import copy
 import threading
 import time
 from collections import deque
@@ -59,7 +60,82 @@ class Twin:
             self.last_forecast_check = None
             self.forecast_peak = None
             self.last = None
+            self.timeline = {}         # sim minute -> recorded state, so the time bar can seek like a video
             self._tick(advance=False)
+            self._record()
+
+    # ---------- recorded timeline (seek back, replay forward) ----------
+    KEEP_DAYS = 3
+    MAX_FAST_FORWARD = timedelta(days=2)
+
+    def _record(self):
+        """Store the state at the current minute (the start of that minute)."""
+        self.timeline[self.sim_time] = {
+            "state": self.state,
+            "allocation": copy.deepcopy(self.allocation),
+            "prev_allocation": copy.deepcopy(self.prev_allocation),
+            "controls": copy.deepcopy({k: v for k, v in self.controls.items() if k not in ("speed", "running")}),
+            "noise": dict(self.noise),
+            "cooldown_until": self.cooldown_until, "pause_until": self.pause_until,
+            "settle": copy.deepcopy(self.settle),
+        }
+        if self.sim_time.minute == 0:   # prune once per simulated hour
+            cutoff = self.sim_time - timedelta(days=self.KEEP_DAYS)
+            for k in [k for k in self.timeline if k < cutoff]:
+                del self.timeline[k]
+
+    def _restore(self, snap: dict, seek: bool):
+        changed = {k: v for k, v in snap["controls"].items() if self.controls.get(k) != v}
+        self.state = snap["state"]
+        self.allocation = copy.deepcopy(snap["allocation"])
+        self.prev_allocation = copy.deepcopy(snap["prev_allocation"])
+        self.controls.update(copy.deepcopy(snap["controls"]))
+        self.noise = dict(snap["noise"])
+        self.cooldown_until, self.pause_until = snap["cooldown_until"], snap["pause_until"]
+        self.settle = copy.deepcopy(snap["settle"])
+        if seek or changed:
+            self.rec = None
+        if seek:
+            self.smoothed = None
+            self.crowded = {p.id: False for p in self.b.pumps}
+            self.last_forecast_check = None
+
+    def _branch(self):
+        """A change made now invalidates the recorded future: drop it and continue from here."""
+        for k in [k for k in self.timeline if k > self.sim_time]:
+            del self.timeline[k]
+
+    def _seek(self, target: datetime):
+        keys = [k for k in self.timeline if k <= target]
+        if target in self.timeline:
+            self.sim_time = target
+            self._restore(self.timeline[target], seek=True)
+        elif keys and target - max(keys) <= self.MAX_FAST_FORWARD:
+            start = max(keys)
+            self.sim_time = start
+            self._restore(self.timeline[start], seek=True)
+            self._trim_history()
+            while self.sim_time < target:      # simulate forward to the requested time
+                self._tick(fast=True)
+        else:
+            # Nothing recorded near this time: start a fresh run here from the starting tank level.
+            self.sim_time = target
+            self.state = hy.initial_state(self.b)
+            self.timeline = {}
+            self.history.clear()
+            self.smoothed = None
+            self.crowded = {p.id: False for p in self.b.pumps}
+            self.last_forecast_check = None
+            self.rec = None
+            self._record()
+        self._trim_history()
+
+    def _trim_history(self):
+        cut = self.sim_time.isoformat()
+        self.history = deque((h for h in self.history if h["t"] < cut), maxlen=1440)
+
+    def recorded_range(self) -> tuple[datetime, datetime] | None:
+        return (min(self.timeline), max(self.timeline)) if self.timeline else None
 
     def start(self):
         if self._thread:
@@ -105,7 +181,7 @@ class Twin:
         exp = self.expected_demand(self.sim_time)
         return {z: v * (1 + self.noise[z]) for z, v in exp.items()}
 
-    def _tick(self, advance: bool = True):
+    def _tick(self, advance: bool = True, fast: bool = False):
         if advance:
             for z in self.noise:
                 self.noise[z] = 0.9 * self.noise[z] + self.rng.normal(0, 0.01)
@@ -131,7 +207,8 @@ class Twin:
         if advance:
             self.state = new_state
         self.last = {"demand": demand, "result": res}
-        self._update_balancer(demand)
+        if not fast:   # fast-forwarding to a sought time skips advice until it arrives
+            self._update_balancer(demand)
         if not advance:
             return
         self.history.append({
@@ -143,6 +220,11 @@ class Twin:
             "unserved_m3h": round(res["unserved_m3h"], 3),
         })
         self.sim_time += timedelta(minutes=1)
+        recorded = self.timeline.get(self.sim_time)
+        if recorded is not None:
+            self._restore(recorded, seek=False)   # replay the recorded future exactly
+        else:
+            self._record()
 
     # ---------- balancer monitor ----------
     def _forecast_peak(self):
@@ -231,6 +313,7 @@ class Twin:
     def control(self, **kw):
         with self.lock:
             c = self.controls
+            before = copy.deepcopy({k: v for k, v in c.items() if k not in ("speed", "running")})
             topology_changed = False
             for k in ("grid_on", "generator_available", "city_supply_on", "running"):
                 if kw.get(k) is not None:
@@ -255,13 +338,16 @@ class Twin:
                     day = day + timedelta(days=(5 - day.weekday()) % 7)
                 elif kw.get("jump_day") == "weekday" and day.weekday() >= 5:
                     day = day + timedelta(days=7 - day.weekday())
-                self.sim_time = datetime(day.year, day.month, day.day, hh, mm)
-                self.smoothed = None
-                self.crowded = {p.id: False for p in self.b.pumps}   # a new time of day starts a fresh watch
-                self.last_forecast_check = None
+                # Seek: the plant goes back (or forward) to how it was at that minute.
+                self._seek(datetime(day.year, day.month, day.day, hh, mm))
             if topology_changed:
                 self.rec = None   # a plan made for the old plant is stale
+            changed = before != {k: v for k, v in c.items() if k not in ("speed", "running")}
+            if changed and not kw.get("jump_to"):
+                self._branch()    # a disturbance changed now rewrites the future from here
             self._tick(advance=False)
+            if changed and not kw.get("jump_to"):
+                self._record()
             return self.snapshot()
 
     def step(self, minutes: int):
@@ -290,7 +376,9 @@ class Twin:
             in_service = [z for z, r in self.last["result"]["zones"].items() if r["in_service"]]
             self.settle = {"plan_id": plan_id, "in_service": in_service, "rollback_advised": None}
             self.rec = None
+            self._branch()   # a decision taken now rewrites the future from here
             self._tick(advance=False)
+            self._record()
             return entry
 
     def dismiss(self, plan_id: str | None, operator: str, note: str):
@@ -301,7 +389,9 @@ class Twin:
                                   _strip(self.rec) if self.rec else None)
             self.rec = None
             self.pause_until = self.sim_time + timedelta(minutes=self.b.balancer["dismiss_pause_min"])
+            self._branch()   # a decision taken now rewrites the future from here
             self._tick(advance=False)
+            self._record()
             return entry
 
     def rollback(self, operator: str, note: str):
@@ -315,14 +405,18 @@ class Twin:
             self.cooldown_until, self.settle = None, None
             self.pause_until = self.sim_time + timedelta(minutes=self.b.balancer["dismiss_pause_min"])
             self.rec = None
+            self._branch()   # a decision taken now rewrites the future from here
             self._tick(advance=False)
+            self._record()
             return entry
 
     def set_provider(self, provider: DemandProvider):
         with self.lock:
             self.provider = provider
             self.last_forecast_check = None
+            self._branch()
             self._tick(advance=False)
+            self._record()
 
     # ---------- views ----------
     def balancer_view(self) -> dict:
@@ -380,6 +474,8 @@ class Twin:
             t = res["tank"]
             return {
                 "sim_time": self.sim_time.isoformat(),
+                "recorded": {"from": self.recorded_range()[0].isoformat(), "to": self.recorded_range()[1].isoformat()}
+                if self.timeline else None,
                 "weekday": self.sim_time.strftime("%A"),
                 "building": b.name,
                 "tank": {"id": b.tank["id"], "name": b.tank["name"], "capacity_m3": b.tank["capacity_m3"],

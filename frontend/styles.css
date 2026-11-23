@@ -134,6 +134,7 @@ section[role="tabpanel"][hidden] { display: none; }
 .pl-night { position: absolute; top: 0; bottom: 0; background: #c8cfd9; }
 .pl-night:first-child { border-radius: 3px 0 0 3px; }
 .pl-night:nth-child(2) { border-radius: 0 3px 3px 0; }
+.pl-loaded { position: absolute; top: 0; bottom: 0; width: 0; background: rgba(0, 114, 188, .28); border-radius: 3px; }
 .pl-hover { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: rgba(14, 26, 43, .2); border-radius: 3px; }
 .pl-played { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: var(--l1); border-radius: 3px; transition: width 1s linear; }
 .pl-knob {

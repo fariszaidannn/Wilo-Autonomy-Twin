@@ -3,14 +3,14 @@ import copy
 import pytest
 from fastapi.testclient import TestClient
 
-from app.config import BUILDING_FILE
+from app.config import DEFAULT_BUILDING_FILE
 from app.main import create_app
 
 
 @pytest.fixture
 def client(tmp_path):
     bpath = tmp_path / "building.json"
-    bpath.write_text(BUILDING_FILE.read_text(encoding="utf-8"), encoding="utf-8")
+    bpath.write_text(DEFAULT_BUILDING_FILE.read_text(encoding="utf-8"), encoding="utf-8")
     with TestClient(create_app(start_clock=False, warm_outage=False, db_path=tmp_path / "api.db",
                                building_path=bpath)) as c:
         yield c

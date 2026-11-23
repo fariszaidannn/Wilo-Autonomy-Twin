@@ -4,7 +4,7 @@ import json
 import pytest
 
 from app import hydraulics as hy
-from app.config import BUILDING_FILE, ConfigError, parse_building
+from app.config import DEFAULT_BUILDING_FILE as BUILDING_FILE, ConfigError, parse_building
 from conftest import BUSY
 
 DT = 1 / 60

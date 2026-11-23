@@ -276,7 +276,7 @@ function buildPlayer() {
     <div class="pl-bar" id="pl-bar" role="slider" tabindex="0" aria-valuemin="0" aria-valuemax="1439">
       <div class="pl-track">
         <div class="pl-night" style="left:0;width:25%"></div><div class="pl-night" style="left:91.667%;width:8.333%"></div>
-        <div class="pl-hover" id="pl-hover"></div><div class="pl-played" id="pl-played"></div>
+        <div class="pl-loaded" id="pl-loaded"></div><div class="pl-hover" id="pl-hover"></div><div class="pl-played" id="pl-played"></div>
       </div>
       <div class="pl-knob" id="pl-knob"></div>
       <div class="pl-tip" id="pl-tip"></div>
@@ -346,6 +346,14 @@ function syncPlayer(s) {
     $("pl-knob").style.left = `${(m / 1440) * 100}%`;
     $("pl-now").textContent = fmtMin(m);
   }
+  // Recorded stretch of this day (like a video's buffered range): seeking inside it restores that moment.
+  const lo = $("pl-loaded");
+  if (s.recorded) {
+    const dayStart = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+    const frac = (iso) => Math.max(0, Math.min(1, (new Date(iso).getTime() - dayStart) / 86400000));
+    const a = frac(s.recorded.from), z = frac(s.recorded.to);
+    lo.style.left = `${a * 100}%`; lo.style.width = `${Math.max(0, z - a) * 100}%`;
+  } else { lo.style.width = "0"; }
   bar.setAttribute("aria-valuenow", m);
   bar.setAttribute("aria-valuetext", `${fmtMin(m)}, ${t("weekday")[(d.getDay() + 6) % 7]}`);
   bar.setAttribute("aria-label", t("pl.label"));
