@@ -24,6 +24,10 @@ Tests: `cd backend && .venv/Scripts/python -m pytest -q` runs 48 tests in about 
 
 `render.yaml` defines one free Python web service rooted at `backend/`. The build installs `requirements-render.txt` (pinned, CPU-only XGBoost) and runs `prewarm.py`, which builds `outage.db` and the evaluation cache so the server never parses the workbook at start-up. The app then needs about 400 MB, inside the free plan's 512 MB. On the free plan the service sleeps after 15 minutes idle (the next visit takes about a minute), and the building twin's state resets on every restart or deploy.
 
+## Deploy to Railway
+
+`backend/railway.json` holds the same build and start commands. In Railway: **New Project → Deploy from GitHub repo**, set the service's **Root Directory** to `backend`, then **Settings → Networking → Generate Domain** to get a public URL. Python 3.13 comes from `backend/.python-version`. Railway has no permanent free plan (expect about $5–7 a month for this app), but it does not sleep and is not limited to 512 MB.
+
 ## What is in it
 
 | Tab | What it does | PRD |
