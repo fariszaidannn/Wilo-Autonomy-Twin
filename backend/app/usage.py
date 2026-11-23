@@ -106,7 +106,11 @@ class DemandProvider:
                 tot_v += s * s
             row["total"] = {"mean": tot_m, "lo": max(0.0, tot_m - tot_v ** 0.5), "hi": tot_m + tot_v ** 0.5}
             pts.append(row)
-        return {"label": self.label, "points": pts, "cv": self.cv, "flags": self.flags}
+        return {"label": self.label, "points": pts, "cv": self.cv, "flags": self.flags, **self.describe()}
+
+    def describe(self) -> dict:
+        """Which method produces the demand, for labels in both languages."""
+        return {"kind": "baseline", "model_zones": [], "fallback_zones": {}, "model_test": None}
 
 
 def summary(b: Building, flows: pd.DataFrame) -> dict:

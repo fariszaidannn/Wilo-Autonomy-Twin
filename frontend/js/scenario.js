@@ -14,7 +14,7 @@ function assumptionsTr(r) {
     .map(([p, v]) => `öncelik ${p} bölgeleri kullanılabilir depo %${v} altına düşünce ayrılır`).join(", ");
   return [
     "Operatör incelemesi için SİMÜLE tahmin; garanti veya “güvenli” derecelendirmesi değildir.",
-    `Talep: son 8 haftanın haftanın-saati ortalaması; en iyi/en kötü = talep × (1 ∓ cv), bölge başına cv ${Object.entries(r.cv).map(([z, v]) => `${z} %${Math.round(v * 100)}`).join(", ")}.`,
+    `Talep: ${{ xgboost: "XGBoost 15 dk modeli (veri sonrasında özyinelemeli)", mixed: `${(r.demand?.model_zones || []).join(", ")} için XGBoost, diğerleri için son 8 haftanın haftanın-saati ortalaması` }[r.demand?.kind] || "son 8 haftanın haftanın-saati ortalaması"}; en iyi/en kötü = talep × (1 ∓ cv), bölge başına cv ${Object.entries(r.cv).map(([z, v]) => `${z} %${Math.round(v * 100)}`).join(", ")}.`,
     "İkiz-hafif hidrolik: bölge başına tek sürtünme katsayısı, boru ağı yok; pompa eğrisi H = H0 − aQ².",
     "Bölge basıncı ayar noktasıyla sınırlıdır; basınç tankları kısa boşlukları köprüler ve doğrusal olarak boşalır.",
     `Bir bölge, basınç asgarinin altında veya karşılanan debi asgari oranın altında ${cfg.service.breach_after_min} dakika üst üste kalırsa hizmet dışıdır.`,

@@ -15,16 +15,29 @@ async function load() {
   render();
 }
 
+// Which method produced the forecast (the backend's provider decides, per zone).
+function modelNote(f) {
+  if (f.kind === "xgboost") return t("u.model.xgb");
+  if (f.kind === "mixed") return t("u.model.mixed", { a: f.model_zones.join(", "), b: Object.keys(f.fallback_zones).join(", ") });
+  return t("u.baseline");
+}
+function testNote(f) {
+  const m = f.model_test;
+  if (!m || m.wape_day_ahead == null) return "";
+  const r = m.range ? `${m.range[0].slice(0, 10)} → ${m.range[1].slice(0, 10)}` : "";
+  return t("u.model.test", { r, x: pct(m.wape_day_ahead, 1), y: pct(m.wape_recursive, 1), z: pct(m.wape_baseline, 1) });
+}
+
 function render() {
   if (!data) return;
   const { summary, forecast, accuracy, status } = data;
   const tot = summary.total;
   const zones = Object.keys(summary.zones);
   const lpd = zones.map((z) => `${z} ${num(summary.zones[z].l_per_person_day, 0)}`).join(" · ");
-  const label = { SIMULATED: "warn", MIXED: "info", MEASURED: "good" }[status.label] || "neutral";
+  const tone = { SIMULATED: "warn", MIXED: "info", MEASURED: "good" }[status.label] || "neutral";
   const flags = Object.entries(status.flags).filter(([, f]) => f.length);
   $("usage").innerHTML = (`
-    <div class="panel"><header><h2>${esc(t("tab.usage"))}</h2>${statusPill(label, t(status.label.toLowerCase()) )}</header>
+    <div class="panel"><header><h2>${esc(t("tab.usage"))}</h2>${statusPill(tone, t(status.label.toLowerCase()) )}</header>
       <div class="facts">
         <div class="fact"><div class="v">${num(tot.m3_per_day, 0)} m³</div><div class="k">${esc(t("u.tiles.day"))}</div></div>
         <div class="fact"><div class="v">${num(tot.peak_m3h)} m³/h</div><div class="k">${esc(t("u.tiles.peak"))} · ${esc(dateTime(tot.peak_local))}</div></div>
@@ -33,13 +46,14 @@ function render() {
       </div></div>
     <div class="charts2">
       <div class="panel"><h3>${esc(t("u.profile"))}</h3><div class="chart" id="u-profile"></div></div>
-      <div class="panel"><h3>${esc(t("u.forecast"))}</h3><p class="panel-note">${esc(t("u.baseline"))}</p><div class="chart" id="u-forecast"></div></div>
+      <div class="panel"><h3>${esc(t("u.forecast"))}</h3><p class="panel-note">${esc(modelNote(forecast))}</p><div class="chart" id="u-forecast"></div></div>
     </div>
     <div class="charts2">
       <div class="panel"><h3>${esc(t("u.accuracy"))}</h3>
         <table style="margin-top:8px"><thead><tr><th>${esc(t("u.acc.zone"))}</th><th class="r">${esc(t("u.acc.mape"))}</th><th class="r">${esc(t("u.acc.y"))}</th><th class="r">${esc(t("u.acc.sigma"))}</th></tr></thead>
         <tbody>${Object.entries(accuracy.zones).map(([z, a]) => `<tr><td><b>${z}</b>&thinsp;·&ensp;${esc(label(z))}</td><td class="r"><b>${pct(a.mape, 1)}</b></td><td class="r">${pct(a.mape_yesterday, 1)}</td><td class="r">${pct(a.within_1sigma, 0)}</td></tr>`).join("")}</tbody></table>
         <p class="panel-note" style="margin-top:8px">${esc(getLang() === "tr" ? "Simüle veride yöntemi gösterir; gerçek bir bina hakkında bir şey söylemez." : "Demonstrates the method on simulated data; says nothing about a real building.")}</p>
+        ${testNote(forecast) ? `<p class="panel-note" style="margin-top:4px">${esc(testNote(forecast))}</p>` : ""}
       </div>
       <div class="panel"><h3>${esc(t("u.source"))}</h3>
         <table style="margin-top:8px"><tbody>
