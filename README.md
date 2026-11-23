@@ -18,6 +18,12 @@ On the first start the app converts `water_outage_dummy_db_demo2.xlsx` to `outag
 
 Tests: `cd backend && .venv/Scripts/python -m pytest -q` runs 48 tests in about 2 minutes. Add `-m "not slow"` to skip the 48-scenario reproduction.
 
+## Deploy to Render
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/fariszaidannn/Wilo-Autonomy-Twin)
+
+`render.yaml` defines one free Python web service rooted at `backend/`. The build installs `requirements-render.txt` (pinned, CPU-only XGBoost) and runs `prewarm.py`, which builds `outage.db` and the evaluation cache so the server never parses the workbook at start-up. The app then needs about 400 MB, inside the free plan's 512 MB. On the free plan the service sleeps after 15 minutes idle (the next visit takes about a minute), and the building twin's state resets on every restart or deploy.
+
 ## What is in it
 
 | Tab | What it does | PRD |

@@ -1,0 +1,10 @@
+# Runtime dependencies for the Render deploy, pinned to the versions the test suite passes with.
+# xgboost-cpu is the same `xgboost` module without the ~250 MB CUDA/NCCL libraries the Linux wheel pulls in.
+fastapi==0.165.0
+uvicorn==0.54.0
+numpy==2.5.5
+pandas==3.1.1
+scipy==1.18.1
+xgboost-cpu==3.4.1
+openpyxl==3.1.5
+python-multipart==0.0.34
