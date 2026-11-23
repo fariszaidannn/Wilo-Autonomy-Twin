@@ -32,6 +32,81 @@ function projector(areas, tanks, W, H, pad = 44) {
   return (p) => { const w = warp(p); return [ox + (w[0] - x0) * s, H - (oy + (w[1] - y0) * s)]; };
 }
 
+// ---------- Istanbul base map ----------
+// Coast, Bosphorus, Golden Horn and the Princes' Islands as [lat, lon], hand-traced to about 1 km.
+// Drawn through the same projection as the stations, so every district sits on its own side of
+// the strait; the shapes are as warped (not to scale) as the rest of the diagram.
+const BOSPHORUS = [[40.985, 28.998], [41.0, 29.0], [41.012, 29.0], [41.025, 29.006], [41.035, 29.017], [41.045, 29.034],
+  [41.055, 29.04], [41.068, 29.048], [41.08, 29.055], [41.092, 29.061], [41.105, 29.064], [41.118, 29.068], [41.13, 29.073],
+  [41.145, 29.08], [41.16, 29.082], [41.175, 29.083], [41.19, 29.095], [41.205, 29.108], [41.222, 29.118], [41.242, 29.128]];
+const STRAIT = BOSPHORUS.slice(2, -1);   // the land edge each side shares (the water line is drawn over it)
+const EUROPE = [[41.1, 27.6],
+  // Sea of Marmara, west to east: Silivri, Büyükçekmece, Avcılar, Yeşilköy, Bakırköy, Yenikapı, Sarayburnu
+  [41.085, 28.1], [41.056, 28.25], [41.056, 28.33], [41.04, 28.4], [41.02, 28.47], [41.008, 28.53], [41.01, 28.585],
+  [40.99, 28.62], [40.978, 28.66], [40.972, 28.7], [40.975, 28.74], [40.985, 28.765], [40.965, 28.8], [40.968, 28.84],
+  [40.972, 28.87], [40.985, 28.905], [40.995, 28.935], [41.0, 28.95], [41.004, 28.968], [41.008, 28.979], [41.016, 28.987],
+  ...STRAIT,
+  // Black Sea, east to west: Rumelifeneri, Kilyos, Karaburun, towards Çatalca's coast
+  [41.232, 29.112], [41.245, 29.06], [41.255, 29.02], [41.275, 28.95], [41.31, 28.82], [41.35, 28.69], [41.37, 28.6],
+  [41.42, 28.45], [41.5, 28.27], [41.58, 28.08], [41.7, 27.6]];
+const ASIA = [...STRAIT,
+  // Black Sea, west to east: Anadolufeneri, Riva, Şile, Ağva
+  [41.215, 29.135], [41.218, 29.17], [41.228, 29.22], [41.215, 29.3], [41.2, 29.42], [41.185, 29.55], [41.178, 29.61],
+  [41.16, 29.72], [41.14, 29.85], [41.12, 30.0], [41.12, 30.5], [40.7, 30.5],
+  // Sea of Marmara, east to west: Gebze, Tuzla, Pendik, Kartal, Maltepe, Bostancı, Fenerbahçe, Moda, Haydarpaşa
+  [40.75, 29.55], [40.785, 29.4], [40.803, 29.3], [40.866, 29.235], [40.885, 29.185], [40.918, 29.13], [40.952, 29.09],
+  [40.968, 29.035], [40.981, 29.022], [40.998, 29.012]];
+const GOLDEN_HORN = [[41.017, 28.982], [41.024, 28.968], [41.033, 28.953], [41.043, 28.942], [41.054, 28.935], [41.066, 28.929]];
+const ISLANDS = [[40.86, 29.123, 0.013], [40.877, 29.095, 0.008], [40.882, 29.066, 0.006], [40.908, 29.05, 0.005]];   // lat, lon, radius°
+const GEO_LABELS = [   // [key, lat, lon, kind]
+  ["eu", 41.25, 28.52, "side"], ["as", 41.1, 29.45, "side"], ["black", 41.245, 29.42, "sea"],
+  ["marmara", 40.9, 28.68, "sea"], ["bos", 41.258, 29.122, "strait"]];
+const LAND_EU = "#f8f9fb", LAND_AS = "#ebeef3", WATER = "#dde9f4", COAST = "#cdd5df";
+
+function geoPath(P, pts, close) {
+  // densified (every ~0.004°) so the curved projection bends the coast smoothly
+  const out = [];
+  const n = close ? pts.length : pts.length - 1;
+  for (let i = 0; i < n; i++) {
+    const a = pts[i], b = pts[(i + 1) % pts.length];
+    const steps = Math.max(1, Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) / 0.004));
+    for (let k = 0; k < steps; k++) out.push(P({ lat: a[0] + ((b[0] - a[0]) * k) / steps, lon: a[1] + ((b[1] - a[1]) * k) / steps }));
+  }
+  if (!close) { const z = pts[pts.length - 1]; out.push(P({ lat: z[0], lon: z[1] })); }
+  return `M${out.map((p) => `${p[0].toFixed(1)},${p[1].toFixed(1)}`).join("L")}${close ? "Z" : ""}`;
+}
+
+let baseCache = { key: null, svg: "" };
+function baseMap(P, W, H) {
+  const key = `${getLang()}|${net.areas.length}|${W}x${H}`;
+  if (baseCache.key === key) return baseCache.svg;
+  const fallback = { eu: "European side", as: "Asian side", black: "Black Sea", marmara: "Sea of Marmara", bos: "Bosphorus" };
+  const names = { ...fallback, ...(typeof t("p.geo") === "object" ? t("p.geo") : {}) };   // the drawing never fails on a label
+  const up = (s) => s.toLocaleUpperCase(getLang() === "tr" ? "tr-TR" : "en");
+  const islands = ISLANDS.map(([la, lo, r]) => {
+    const [x, y] = P({ lat: la, lon: lo }), [, y2] = P({ lat: la + r, lon: lo });
+    return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${Math.max(2.5, Math.abs(y - y2)).toFixed(1)}" fill="${LAND_AS}" stroke="${COAST}" stroke-width="1.2"/>`;
+  }).join("");
+  const labels = GEO_LABELS.map(([k, la, lo, kind]) => {
+    const [x, y] = P({ lat: la, lon: lo });
+    const side = kind === "side";
+    return `<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" text-anchor="middle" font-size="${side ? 14 : 12}" font-weight="800"
+      letter-spacing="${side ? "0.16em" : "0.12em"}" fill="${side ? "#6b778a" : "#7d9bb5"}" ${kind === "sea" || kind === "strait" ? 'font-style="italic"' : ""}>${esc(up(names[k]))}</text>`;
+  }).join("");
+  const svg = `<g aria-hidden="true">
+    <rect width="${W}" height="${H}" fill="${WATER}"/>
+    <path d="${geoPath(P, EUROPE, true)}" fill="${LAND_EU}" stroke="${COAST}" stroke-width="1.2" stroke-linejoin="round"/>
+    <path d="${geoPath(P, ASIA, true)}" fill="${LAND_AS}" stroke="${COAST}" stroke-width="1.2" stroke-linejoin="round"/>
+    ${islands}
+    <path d="${geoPath(P, BOSPHORUS, false)}" fill="none" stroke="${COAST}" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="${geoPath(P, BOSPHORUS, false)}" fill="none" stroke="${WATER}" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="${geoPath(P, GOLDEN_HORN, false)}" fill="none" stroke="${COAST}" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="${geoPath(P, GOLDEN_HORN, false)}" fill="none" stroke="${WATER}" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    ${labels}</g>`;
+  baseCache = { key, svg };
+  return svg;
+}
+
 function octi(a, b) {
   // diagonal leg from the station, then straight into the terminus
   const dx = b[0] - a[0], dy = b[1] - a[1];
@@ -79,7 +154,7 @@ function mapSvg() {
       <text x="${x}" y="${y + 4.5}" text-anchor="middle" font-size="11" font-weight="800" fill="#fff">${tk.tank_id.slice(1)}</text></g>`;
   });
   const note = `<text x="${W - 14}" y="${H - 12}" text-anchor="end" font-size="13" fill="#586478">${esc(getLang() === "tr" ? "Şematik, ölçeksiz · İstanbul ilçeleri" : "Diagram, not to scale · Istanbul districts")}</text>`;
-  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(t("p.title"))}">${note}${lines.join("")}${casings.join("")}${stations.join("")}${termini.join("")}${labels.join("")}</svg><div class="tip" id="p-tip"></div>`;
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(t("p.title"))}">${baseMap(P, W, H)}${note}${lines.join("")}${casings.join("")}${stations.join("")}${termini.join("")}${labels.join("")}</svg><div class="tip" id="p-tip"></div>`;
 }
 
 function bindMap() {

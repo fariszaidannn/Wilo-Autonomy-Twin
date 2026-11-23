@@ -167,6 +167,17 @@ section[role="tabpanel"][hidden] { display: none; }
 .pl-day { color: var(--ink-2); font-size: 15px; }
 .pl-right { margin-left: auto; display: flex; align-items: center; gap: var(--s3); flex-wrap: wrap; }
 @media (prefers-reduced-motion: reduce) { .pl-played, .pl-knob { transition: none !important; } }
+/* Disturbances on the track: red is the status colour of a cut or failure; lighter = the planned rest. */
+.pl-dist { position: absolute; inset: 0; pointer-events: none; }
+.pl-ds { position: absolute; top: 0; bottom: 0; min-width: 3px; background: var(--crit); border-radius: 3px; pointer-events: auto; }
+.pl-ds.plan { opacity: .4; }
+
+/* "How long?" pills right under a switched-on disturbance */
+.dur { display: flex; flex-wrap: wrap; align-items: center; gap: 6px var(--s2); margin: -2px 0 var(--s2); padding-left: var(--s3); border-left: 3px solid var(--crit); }
+.dur[hidden] { display: none; }
+.dur-q { font-size: 14px; font-weight: 800; color: var(--ink-2); }
+.dur .seg button { padding: 3px 11px 1px; font-size: 14px; }
+.dur-end { font-size: 13px; color: var(--muted); }
 
 /* ---------- controls ---------- */
 .controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: var(--s4) var(--s5); }

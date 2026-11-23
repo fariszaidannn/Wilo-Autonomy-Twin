@@ -25,6 +25,30 @@ class StalePlan(Exception):
     """The plan id no longer matches the current recommendation (HTTP 409)."""
 
 
+def disturbance_keys(c: dict) -> set[str]:
+    """Which disturbances the controls describe: city / grid / generator / pump:<id>."""
+    keys = {f"pump:{p}" for p in c["pump_failed"]}
+    if not c["city_supply_on"]:
+        keys.add("city")
+    if not c["grid_on"]:
+        keys.add("grid")
+    if not c["generator_available"]:
+        keys.add("generator")
+    return keys
+
+
+def end_disturbance(c: dict, key: str) -> None:
+    """Put the control behind `key` back to normal."""
+    if key == "city":
+        c["city_supply_on"] = True
+    elif key == "grid":
+        c["grid_on"] = True
+    elif key == "generator":
+        c["generator_available"] = True
+    elif key.startswith("pump:"):
+        c["pump_failed"] = [p for p in c["pump_failed"] if p != key[5:]]
+
+
 class Twin:
     def __init__(self, b: Building, con, provider: DemandProvider, seed: int = 7):
         self.b = b
@@ -61,6 +85,7 @@ class Twin:
             self.forecast_peak = None
             self.last = None
             self.timeline = {}         # sim minute -> recorded state, so the time bar can seek like a video
+            self.events = []           # disturbances: start, chosen end; the twin switches them back at the end
             self._tick(advance=False)
             self._record()
 
@@ -78,11 +103,13 @@ class Twin:
             "noise": dict(self.noise),
             "cooldown_until": self.cooldown_until, "pause_until": self.pause_until,
             "settle": copy.deepcopy(self.settle),
+            "events": copy.deepcopy(self.events),
         }
         if self.sim_time.minute == 0:   # prune once per simulated hour
             cutoff = self.sim_time - timedelta(days=self.KEEP_DAYS)
             for k in [k for k in self.timeline if k < cutoff]:
                 del self.timeline[k]
+            self.events = [e for e in self.events if not e["ended"] or e["end"] >= cutoff]
 
     def _restore(self, snap: dict, seek: bool):
         changed = {k: v for k, v in snap["controls"].items() if self.controls.get(k) != v}
@@ -93,6 +120,7 @@ class Twin:
         self.noise = dict(snap["noise"])
         self.cooldown_until, self.pause_until = snap["cooldown_until"], snap["pause_until"]
         self.settle = copy.deepcopy(snap["settle"])
+        self.events = copy.deepcopy(snap.get("events", []))
         if seek or changed:
             self.rec = None
         if seek:
@@ -224,7 +252,19 @@ class Twin:
         if recorded is not None:
             self._restore(recorded, seek=False)   # replay the recorded future exactly
         else:
+            if self._end_due():
+                self._tick(advance=False, fast=fast)   # this minute already runs without the disturbance
             self._record()
+
+    def _end_due(self) -> bool:
+        """Switch back every disturbance whose chosen end has come. True if any control changed."""
+        due = [e for e in self.events if not e["ended"] and e["end"] is not None and e["end"] <= self.sim_time]
+        for e in due:
+            end_disturbance(self.controls, e["key"])
+            e["ended"], e["end"] = True, self.sim_time
+        if due:
+            self.rec = None   # a plan made for the disturbed plant is stale
+        return bool(due)
 
     # ---------- balancer monitor ----------
     def _forecast_peak(self):
@@ -342,12 +382,36 @@ class Twin:
                 self._seek(datetime(day.year, day.month, day.day, hh, mm))
             if topology_changed:
                 self.rec = None   # a plan made for the old plant is stale
+            if not kw.get("jump_to"):
+                self._log_disturbances(disturbance_keys(before), disturbance_keys(c))
             changed = before != {k: v for k, v in c.items() if k not in ("speed", "running")}
             if changed and not kw.get("jump_to"):
                 self._branch()    # a disturbance changed now rewrites the future from here
             self._tick(advance=False)
             if changed and not kw.get("jump_to"):
                 self._record()
+            return self.snapshot()
+
+    def _log_disturbances(self, before: set, after: set):
+        """Switched on: a disturbance starts now (no end until a length is chosen). Switched off: it ends now."""
+        for key in sorted(after - before):
+            self.events.append({"key": key, "start": self.sim_time, "end": None, "ended": False})
+        for key in before - after:
+            for e in self.events:
+                if e["key"] == key and not e["ended"]:
+                    e["ended"], e["end"] = True, self.sim_time
+
+    def set_duration(self, key: str, minutes: int):
+        """Give the running disturbance `key` a length, counted from its start."""
+        with self.lock:
+            ev = next((e for e in self.events if e["key"] == key and not e["ended"]), None)
+            if ev is None:
+                raise KeyError(key)
+            ev["end"] = ev["start"] + timedelta(minutes=int(minutes))
+            self._branch()    # the recorded future had no end; it is rewritten from here
+            self._end_due()   # a length that has already passed ends it now
+            self._tick(advance=False)
+            self._record()
             return self.snapshot()
 
     def step(self, minutes: int):
@@ -484,6 +548,9 @@ class Twin:
                 "power_source": res["power_source"], "generator_fuel_h": self.state.fuel_h,
                 "unserved_m3h": res["unserved_m3h"],
                 "controls": dict(self.controls, zone_mult=dict(self.controls["zone_mult"])),
+                "disturbances": [{"key": e["key"], "start": e["start"].isoformat(),
+                                  "end": e["end"].isoformat() if e["end"] else None, "active": not e["ended"]}
+                                 for e in self.events],
                 "loadbalancer": self.balancer_view(),
                 "demand_label": self.provider.label,
                 "requires_operator_approval": True, "controls_real_pumps": False,

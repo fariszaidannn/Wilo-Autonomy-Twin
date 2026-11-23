@@ -42,6 +42,11 @@ class StepBody(BaseModel):
     minutes: int = Field(1, ge=1, le=1440)
 
 
+class DurationBody(BaseModel):
+    key: str = Field(pattern=r"^(city|grid|generator|pump:[A-Z][A-Z0-9]{0,5})$")
+    duration_min: int = Field(ge=1, le=1440)
+
+
 class Decision(BaseModel):
     plan_id: str | None = None
     operator: str = Field("operator", min_length=1, max_length=60)
@@ -168,7 +173,12 @@ def create_app(start_clock: bool = True, warm_outage: bool = True, db_path: Path
     async def limit_body(request: Request, call_next):
         if int(request.headers.get("content-length") or 0) > db.MAX_CSV_BYTES + 100_000:
             return JSONResponse({"detail": "Request too large"}, status_code=413)
-        return await call_next(request)
+        response = await call_next(request)
+        # The page and its scripts must always match: make the browser revalidate them (a 304 when
+        # unchanged) instead of reusing a stale copy, which could pair a new script with an old one.
+        if request.url.path == "/" or request.url.path.startswith("/static/"):
+            response.headers["Cache-Control"] = "no-cache"
+        return response
 
     # ---------- twin ----------
     @app.get("/api/state")
@@ -189,6 +199,14 @@ def create_app(start_clock: bool = True, warm_outage: bool = True, db_path: Path
     @app.post("/api/twin/step")
     def step(body: StepBody):
         return S().twin.step(body.minutes)
+
+    @app.post("/api/twin/disturbance")
+    def disturbance_duration(body: DurationBody):
+        """How long a running disturbance lasts; at its end the twin switches it back."""
+        try:
+            return S().twin.set_duration(body.key, body.duration_min)
+        except KeyError:
+            raise HTTPException(409, "That disturbance is not running any more.")
 
     @app.post("/api/twin/reset")
     def reset():

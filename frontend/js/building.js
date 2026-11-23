@@ -246,12 +246,18 @@ function renderRail(s) {
 function buildControls() {
   const host = $("controls");
   host.innerHTML = `
-    <div class="ctl-group"><h3 id="cg-pumps"></h3>${topo.pumps.map((p) => `<label class="switch"><span id="lbl-f-${p}"></span><input type="checkbox" class="danger" id="c-f-${p}" data-pump="${p}"></label>`).join("")}</div>
-    <div class="ctl-group"><h3 id="cg-power"></h3><label class="switch"><span id="lbl-grid"></span><input type="checkbox" id="c-grid"></label><label class="switch"><span id="lbl-gen"></span><input type="checkbox" id="c-gen"></label><label class="switch"><span id="lbl-city"></span><input type="checkbox" id="c-city"></label></div>
+    <div class="ctl-group"><h3 id="cg-pumps"></h3>${topo.pumps.map((p) => `<label class="switch"><span id="lbl-f-${p}"></span><input type="checkbox" class="danger" id="c-f-${p}" data-pump="${p}"></label>${durSlot(`pump:${p}`)}`).join("")}</div>
+    <div class="ctl-group"><h3 id="cg-power"></h3><label class="switch"><span id="lbl-grid"></span><input type="checkbox" id="c-grid"></label>${durSlot("grid")}<label class="switch"><span id="lbl-gen"></span><input type="checkbox" id="c-gen"></label>${durSlot("generator")}<label class="switch"><span id="lbl-city"></span><input type="checkbox" id="c-city"></label>${durSlot("city")}</div>
     <div class="ctl-group"><h3 id="cg-demand"></h3>
       <label class="range"><span id="lbl-all"></span><output id="o-all"></output><input type="range" id="c-all" min="50" max="200" step="5"></label>
       ${topo.zones.map((z) => `<label class="range"><span id="lbl-${z}"></span><output id="o-${z}"></output><input type="range" id="c-${z}" min="50" max="250" step="5"></label>`).join("")}</div>`;
   const send = (body) => post("/api/twin/control", body).then(update).catch(() => {});
+  host.onclick = (e) => {
+    const b = e.target.closest("[data-dkey]");
+    if (!b || b.getAttribute("aria-pressed") === "true") return;
+    post("/api/twin/disturbance", { key: b.dataset.dkey, duration_min: +b.dataset.min })
+      .then(update).catch(() => get("/api/state").then(update));   // it ended meanwhile: show the plant as it is
+  };
   host.querySelectorAll("[data-pump]").forEach((box) => {
     box.onchange = () => send({ pump_failed: [...host.querySelectorAll("[data-pump]:checked")].map((x) => x.dataset.pump) });
   });
@@ -267,6 +273,46 @@ function buildControls() {
   labelControls();
 }
 
+// ---------------- disturbance length: "How long?" pills under a switched-on disturbance ----------------
+const DURS = [60, 240, 480, 720];
+const durSlot = (key) => `<div class="dur" data-dur="${key}" hidden></div>`;
+const distName = (key) => (key.startsWith("pump:") ? t("ctl.fail", { p: pumpName(key.slice(5)) })
+  : t({ grid: "ctl.grid", generator: "ctl.gen", city: "ctl.city" }[key]));
+const minutesBetween = (a, b) => (Date.parse(b) - Date.parse(a)) / 60000;   // both are sim-local ISO strings
+
+function syncDurations(s) {
+  const running = Object.fromEntries((s.disturbances || []).filter((d) => d.active).map((d) => [d.key, d]));
+  document.querySelectorAll("#controls [data-dur]").forEach((el) => {
+    const d = running[el.dataset.dur];
+    el.hidden = !d;
+    const sig = d ? `${getLang()}|${d.start}|${d.end}` : "";
+    if (!d || el.dataset.sig === sig) return;
+    el.dataset.sig = sig;
+    const len = d.end ? minutesBetween(d.start, d.end) : null;
+    const had = document.activeElement?.closest?.(`[data-dur="${el.dataset.dur}"] [data-min]`)?.dataset.min;
+    el.innerHTML = `<span class="dur-q">${esc(t("dur.q"))}</span>
+      <div class="seg" role="group" aria-label="${esc(`${distName(d.key)}: ${t("dur.q")}`)}">${DURS.map((m) =>
+        `<button type="button" data-dkey="${esc(d.key)}" data-min="${m}" aria-pressed="${m === len}">${m / 60} ${esc(t("h"))}</button>`).join("")}</div>
+      ${d.end ? `<span class="dur-end">${esc(t("dur.until", { t: hhmm(d.end) }))}</span>` : ""}`;
+    if (had) el.querySelector(`[data-min="${had}"]`)?.focus();   // keyboard focus survives the redraw
+  });
+}
+
+// Red segments on the time bar for this day: solid while a disturbance has run, lighter for its planned rest.
+function distSegments(s, day) {
+  const d0 = new Date(day.getFullYear(), day.getMonth(), day.getDate()).getTime();
+  const f = (iso) => Math.max(0, Math.min(1, (new Date(iso).getTime() - d0) / 86400000)) * 100;
+  const now = f(s.sim_time);
+  return (s.disturbances || []).map((e) => {
+    const a = f(e.start), z = e.end ? f(e.end) : e.active ? now : a;
+    if (z <= 0 || a >= 100 || (z === a && !e.active)) return "";
+    const ran = Math.max(a, Math.min(z, now));
+    const title = esc(`${distName(e.key)} · ${hhmm(e.start)}–${e.end ? hhmm(e.end) : "…"}`);
+    return `<span class="pl-ds" title="${title}" style="left:${a}%;width:${ran - a}%"></span>`
+      + (z > ran ? `<span class="pl-ds plan" title="${title}" style="left:${ran}%;width:${z - ran}%"></span>` : "");
+  }).join("");
+}
+
 // ---------------- simulation time bar (00:00 -> 24:00, like a video timeline) ----------------
 let dragging = false, lastMin = null;
 const fmtMin = (m) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
@@ -279,7 +325,7 @@ function buildPlayer() {
     <div class="pl-bar" id="pl-bar" role="slider" tabindex="0" aria-valuemin="0" aria-valuemax="1439">
       <div class="pl-track">
         <div class="pl-night" style="left:0;width:25%"></div><div class="pl-night" style="left:91.667%;width:8.333%"></div>
-        <div class="pl-loaded" id="pl-loaded"></div><div class="pl-hover" id="pl-hover"></div><div class="pl-played" id="pl-played"></div>
+        <div class="pl-loaded" id="pl-loaded"></div><div class="pl-hover" id="pl-hover"></div><div class="pl-played" id="pl-played"></div><div class="pl-dist" id="pl-dist"></div>
       </div>
       <div class="pl-knob" id="pl-knob"></div>
       <div class="pl-tip" id="pl-tip"></div>
@@ -350,6 +396,7 @@ function syncPlayer(s) {
     $("pl-now").textContent = fmtMin(m);
   }
   // Recorded stretch of this day (like a video's buffered range): seeking inside it restores that moment.
+  $("pl-dist").innerHTML = distSegments(s, d);
   const lo = $("pl-loaded");
   if (s.recorded) {
     const dayStart = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
@@ -433,6 +480,7 @@ function update(s) {
   $("schematic").innerHTML = schematic(s, s.loadbalancer.recommendation);
   syncControls(s);
   syncPlayer(s);
+  syncDurations(s);
   renderRail(s);
   syncOutlook(s);
 }
