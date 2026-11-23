@@ -43,7 +43,9 @@ def assumptions(b: Building, prov: DemandProvider) -> list[str]:
     ]
 
 
-def _run_case(b, prov, start, scenario, opts, case_sign, horizon_min, with_balancer):
+def _run_case(b, prov, start, scenario, opts, case_sign, horizon_min, with_balancer,
+              spread=1.0, isolate=frozenset(), isolate_from=None):
+    """spread scales the cv band (1.0 = ±1σ). `isolate` zones are valved off from minute `isolate_from`."""
     t0 = start["sim_time"]
     c = start["controls"]
     failed = set(c["pump_failed"])
@@ -71,8 +73,9 @@ def _run_case(b, prov, start, scenario, opts, case_sign, horizon_min, with_balan
     for m in range(horizon_min):
         t = t0 + timedelta(minutes=m)
         demand = {z.id: prov.mean(z.id, t) * c["demand_mult"] * c["zone_mult"][z.id] *
-                  (1 + case_sign * prov.cv[z.id]) for z in b.zones}
-        inp = hy.Inputs(demand, alloc, frozenset(failed), grid, gen, city)
+                  max(0.0, 1 + case_sign * spread * prov.cv[z.id]) for z in b.zones}
+        iso = isolate if isolate_from is not None and m >= isolate_from else frozenset()
+        inp = hy.Inputs(demand, alloc, frozenset(failed), grid, gen, city, isolated=iso)
         if with_balancer and m % 15 == 0 and m >= cooldown:
             _, probe = hy.step(b, state, inp, dt)
             crowded = {p: r["healthy"] and r["load_pct"] >= b.balancer["crowded_pct"] for p, r in probe["pumps"].items()}
@@ -161,6 +164,73 @@ def run(b: Building, prov: DemandProvider, start: dict, scenario: str, horizon_h
         "zones": zones,
         "series": {"base": base["series"], "best": runs[("best", False)]["series"],
                    "worst": runs[("worst", False)]["series"], "base_with_balancer": runs[("base", True)]["series"]},
-        "assumptions": assumptions(b, prov), "cv": prov.cv,
+        "assumptions": assumptions(b, prov), "cv": prov.cv, "demand": prov.describe(),
         "data_label": "SIMULATED", "requires_operator_approval": True, "controls_real_pumps": False,
+    }
+
+
+# ---------------- live outage outlook (Building tab) ----------------
+OUTLOOK_EVENTS = ("city_supply_cut", "power_outage")
+P90_Z = 1.2816   # P10 / P90 of the demand band, assuming it is normal: mean ∓ 1.2816 σ
+OUTLOOK_CASES = (("expected", "base"), ("worst", "worst"), ("best", "best"))
+
+
+def first_reserve_stage(b: Building) -> dict | None:
+    """The low-tank reserve stage that triggers first (highest %) and the zones it isolates.
+    These are the zones the building's engineers chose to give up first; the most critical
+    priority is never included. None when no stage is configured."""
+    res = {int(p): float(v) for p, v in (b.tank.get("priority_reserve_pct") or {}).items() if float(v) > 0}
+    if not res:
+        return None
+    top = max(res.values())
+    prio = min(p for p, v in res.items() if v == top)
+    crit = min(z.priority for z in b.zones)
+    zones = [z.id for z in b.zones if z.priority >= prio and z.priority > crit]
+    return {"priority_from": prio, "below_pct": top, "zones": zones} if zones else None
+
+
+def outlook(b: Building, prov: DemandProvider, start: dict, event: str, window_h: int) -> dict:
+    """If `event` starts now (or is already under way): time until each zone loses service,
+    the critical zones' demand met with and without the mitigation, and the preparation time.
+    Expected = forecast demand; worst / best = P90 / P10 demand for every zone, all window long."""
+    if event not in OUTLOOK_EVENTS:
+        raise ValueError(f"event must be one of {list(OUTLOOK_EVENTS)}")
+    c = start["controls"]
+    active = (not c["city_supply_on"]) if event == "city_supply_cut" else (not c["grid_on"])
+    detect = 0 if active else int(b.service.get("detection_delay_min", 5))
+    horizon = int(window_h * 60)
+    opts = {"generator": bool(c["generator_available"])} if event == "power_outage" else {}
+    stage = first_reserve_stage(b)
+    iso = frozenset(stage["zones"]) if stage else frozenset()
+
+    runs = {}
+    for case, sign in CASES.items():
+        runs[(case, False)] = _run_case(b, prov, start, event, opts, sign, horizon, False, spread=P90_Z)
+        if iso:
+            runs[(case, True)] = _run_case(b, prov, start, event, opts, sign, horizon, False, spread=P90_Z,
+                                           isolate=iso, isolate_from=detect)
+
+    def first(case):
+        fb = runs[(case, False)]["first_breach_min"]
+        if not fb:
+            return None
+        zid = min(fb, key=lambda z: (fb[z], -b.zone_by_id[z].priority))
+        t = fb[zid]
+        return {"zone": zid, "breach_min": t, "lead_min": max(0, t - detect), "before_detection": t < detect}
+
+    crit = min(z.priority for z in b.zones)
+    critical = [z.id for z in b.zones if z.priority == crit]
+    met = lambda mit: {lbl: runs[(case, mit)]["priority_demand_met"] for lbl, case in OUTLOOK_CASES}
+    return {
+        "event": event, "window_h": window_h, "sim_time": start["sim_time"].isoformat(),
+        "already_active": active, "detection_min": detect,
+        "generator": opts.get("generator"), "spread_z": P90_Z,
+        "zones": [{"zone": z.id, "name": z.name, "priority": z.priority,
+                   "threshold_min": {lbl: runs[(case, False)]["first_breach_min"].get(z.id)
+                                     for lbl, case in OUTLOOK_CASES}} for z in b.zones],
+        "lead": {lbl: first(case) for lbl, case in OUTLOOK_CASES},
+        "priority": {"zones": critical, "no_action": met(False), "mitigated": met(True) if iso else None},
+        "mitigation": stage,
+        "demand_label": prov.label, "demand_kind": prov.describe()["kind"], "data_label": "SIMULATED",
+        "requires_operator_approval": True, "controls_real_pumps": False,
     }

@@ -4,6 +4,7 @@ import { topo, loadTopo, pumpHex, zoneHex, label, layout, linePath, busPath, PX,
 import { t, tf, getLang, onLang, num, pctRaw, hhmm } from "./i18n.js";
 import { lineChart } from "./charts.js";
 import { icon, statusPill, esc } from "./ui.js";
+import { mountOutlook, syncOutlook } from "./outlook.js";
 
 let S = null;            // last /api/state
 let railKey = "";        // re-render the rail only when its content changes
@@ -175,7 +176,8 @@ function renderRail(s) {
   const key = JSON.stringify([getLang(), lb.status, lb.paused, lb.minutes_left, rec && rec.plan_id, lb.can_rollback, lb.recent_decisions.map((d) => d.id), toast, lb.rollback_advised]);
   const host = $("balancer");
   if (!host.dataset.init) {
-    host.innerHTML = `<div class="panel" id="rail-main"></div>
+    host.innerHTML = `<div class="panel" id="outlook"></div>
+      <div class="panel" id="rail-main"></div>
       <div class="panel"><div class="decide">
         <div class="who"><label class="field"><span data-i18n="lb.operator">${t("lb.operator")}</span><input type="text" id="op-name" maxlength="60" autocomplete="name"></label>
         <label class="field"><span data-i18n="lb.note">${t("lb.note")}</span><input type="text" id="op-note" maxlength="500"></label></div>
@@ -183,6 +185,7 @@ function renderRail(s) {
       <div class="panel"><h3 data-i18n="lb.recent">${t("lb.recent")}</h3><ul class="log" id="rail-log"></ul></div>`;
     try { $("op-name").value = localStorage.getItem("wat.operator") || ""; } catch { /* ignore */ }
     $("op-name").addEventListener("change", (e) => { try { localStorage.setItem("wat.operator", e.target.value); } catch { /* ignore */ } });
+    mountOutlook($("outlook"));
     host.dataset.init = "1";
   }
   if (key === railKey) { const lr = $("rail-loads"); if (lr) lr.innerHTML = loadRows(rec, s); return; }
@@ -431,6 +434,7 @@ function update(s) {
   syncControls(s);
   syncPlayer(s);
   renderRail(s);
+  syncOutlook(s);
 }
 
 export function initBuilding() {

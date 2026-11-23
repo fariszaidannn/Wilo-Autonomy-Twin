@@ -228,6 +228,62 @@ summary { cursor: pointer; font-weight: 800; list-style-position: outside; paddi
 .toast.err { background: var(--crit-bg); color: var(--crit); }
 .toast.ok { background: var(--good-bg); color: var(--good); }
 
+/* ---------- outage outlook: bento tiles at the top of the rail ---------- */
+/* The rail is taller than a laptop screen now; it scrolls on its own so Approve stays reachable. */
+@media (min-width: 1101px) {
+  .rail { max-height: calc(100vh - 108px); overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; padding-bottom: var(--s4); }
+}
+#outlook > header { flex-wrap: wrap; }
+#outlook > header h2 { white-space: nowrap; }   /* the note wraps under the title, never the title */
+.o-ctl { display: flex; flex-wrap: wrap; gap: var(--s2) var(--s3); margin-bottom: var(--s3); }
+.o-ctl .seg button { padding: 4px 12px 2px; font-size: 14px; }
+.bento { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s3); }
+/* Framed like the planner map sheet: hairline and 12px corners on white, no shadow, no grey ground. */
+.tile {
+  border: 1px solid var(--hair); border-radius: 12px; background: var(--ground);
+  padding: var(--s3) var(--s4) var(--s4); display: flex; flex-direction: column; gap: 6px; min-width: 0;
+}
+.tile.wide { grid-column: 1 / -1; }
+.tile h3 {
+  display: flex; align-items: center; gap: 6px; margin-bottom: 2px;
+  font-size: 13px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; color: var(--ink-2);
+}
+.tile h3 svg { flex: none; margin-top: -2px; }
+.o-zones { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s2); }
+.o-zone { display: grid; grid-template-columns: 12px minmax(0, 1fr) auto; gap: var(--s2); align-items: center; }
+.o-dot { width: 12px; height: 12px; border-radius: 50%; }
+.o-zn { font-size: 17px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.o-zn b { font-weight: 800; }
+.o-zn span { font-size: 13px; color: var(--muted); margin-left: 4px; }
+.o-zv { text-align: right; }
+.o-zv b { display: block; font-size: 19px; font-weight: 800; line-height: 1.15; }
+.o-zv small { display: block; font-size: 13px; color: var(--muted); }
+.o-k { font-size: 14px; color: var(--ink-2); line-height: 1.3; }
+.o-big { font-size: 30px; font-weight: 800; line-height: 1.05; letter-spacing: -0.02em; }
+.o-big.mit { color: #0a4f85; }
+.o-sub { font-size: 13px; color: var(--muted); }
+.o-sep { border: 0; border-top: 1px solid var(--hair); margin: var(--s1) 0; }
+.o-alert { display: flex; gap: 6px; align-items: flex-start; font-size: 13px; font-weight: 700; color: var(--warn); }
+.o-alert svg { flex: none; }
+.o-foot { margin-top: auto; padding-top: var(--s2); display: grid; gap: var(--s2); justify-items: start; font-size: 13px; line-height: 1.35; color: var(--ink-2); }
+.tile.wide .o-foot { grid-template-columns: minmax(0, 1fr) auto; align-items: end; }
+.o-sim {
+  display: inline-flex; align-items: center; gap: 4px; white-space: nowrap;
+  background: #ffe9a8; color: #4a3500; font-weight: 800; font-size: 11px; letter-spacing: .06em;
+  padding: 3px 8px 1px; border-radius: var(--r-pill);
+}
+.o-sim svg { margin-top: -2px; }
+@media (max-width: 1100px) and (min-width: 701px) {
+  .bento { grid-template-columns: repeat(3, minmax(0, 1fr)); }   /* full-width rail: three across */
+  .tile.wide { grid-column: auto; }
+  .tile.wide .o-foot { grid-template-columns: 1fr; }
+  .o-zn { white-space: normal; }
+  .o-zn span { display: block; margin-left: 0; }   /* narrow tile: the priority word goes under the id */
+}
+@media (max-width: 700px) {
+  .bento { grid-template-columns: 1fr; }
+}
+
 /* ---------- charts ---------- */
 .charts2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s6); }
 .chart { position: relative; }

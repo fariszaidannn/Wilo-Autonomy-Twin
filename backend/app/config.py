@@ -166,6 +166,11 @@ def _errors(b: Building) -> list[str]:
         e.append("Tank: capacity, dead volume, starting volume and city inflow are required.")
     if any(pid not in b.pump_by_id for pid in b.generator.get("covers_pumps", [])):
         e.append("Generator: it can only cover existing pumps.")
+    try:
+        if not 0 <= float(b.service.get("detection_delay_min", 5)) <= 120:
+            e.append("Service: outage detection delay must be 0 to 120 minutes.")
+    except (TypeError, ValueError):
+        e.append("Service: outage detection delay must be a number of minutes.")
     bal = b.balancer
     if bal["release_pct"] >= bal["crowded_pct"]:
         e.append("Balancer: release_pct must be below crowded_pct (hysteresis).")

@@ -128,7 +128,8 @@
   },
   "service": {
     "breach_after_min": 2,
-    "warning_margin_bar": 0.3
+    "warning_margin_bar": 0.3,
+    "detection_delay_min": 5
   },
   "synthetic": {
     "seed": 2022,

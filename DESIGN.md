@@ -206,7 +206,7 @@ A white wayfinding ground with one deep navy ink, six categorical line colours, 
 
 A sticky 68px header (brand, pill tabs, SIMULATED pill, EN/TR switch) sits on a 5px navy rule, followed by a tint disclaimer banner that is always visible. Main content has 24px/32px padding and a spacing scale of 4, 8, 12, 16, 24, 32, 48px.
 
-- **Building view:** a two-column split, fluid left column plus a 420px right rail (the balancer) with 32px gap; the rail is sticky at 92px. Panels stack with 24px between them.
+- **Building view:** a two-column split, fluid left column plus a 420px right rail (outage outlook, then the balancer) with 32px gap; the rail is sticky at 92px and scrolls on its own when taller than the screen. Panels stack with 24px between them. The outlook's bento is two up in the rail (time to threshold spans both), three up when the rail goes full width below 1100px, one up at 700px.
 - **Planner view:** three columns (300px, fluid map, 360px); the right column drops below at 1280px; everything stacks at 820px.
 - **Controls:** auto-fit grid with 230px minimum columns. **Charts:** two up, one up at 820px. **Route strips:** auto-fit, 180px minimum.
 - **At 1100px** the split becomes a single column with the rail moved directly under the status headline, the header wraps, and padding tightens to 16px/24px. **At 820px** tabs move to their own scrolling row and the building schematic scrolls horizontally at a 680px minimum rather than shrinking illegibly.
@@ -216,7 +216,7 @@ A sticky 68px header (brand, pill tabs, SIMULATED pill, EN/TR switch) sits on a 
 Flat. Depth comes from navy rules and tint fills, never from layered surfaces. The one shadow is the chart tooltip, a navy chip that floats over the plot (`0 6px 20px rgba(14, 26, 43, .25)`).
 
 ### Named Rules
-**The Rules Not Cards Rule.** A section is a 3px navy rule across the top with its title on it, not a bordered or shadowed card. The header carries the heaviest rule (5px), panels 3px, table heads 2px, row dividers 1px hairline. The only framed surface is the planner map (1px hairline, 12px corners, off-white #fbfcfd), which is a map sheet, not a card.
+**The Rules Not Cards Rule.** A section is a 3px navy rule across the top with its title on it, not a bordered or shadowed card. The header carries the heaviest rule (5px), panels 3px, table heads 2px, row dividers 1px hairline. The only framed surface is the planner map (1px hairline, 12px corners, off-white #fbfcfd), which is a map sheet, not a card. The one exception is the outage-outlook bento in the Building rail: its tiles take the same map-sheet frame (1px hairline, 12px corners) on white, still with no shadow and no grey ground, because each tile is a separate reading of one simulation and the frame keeps the three readings apart inside one ruled panel.
 
 ## Shapes
 

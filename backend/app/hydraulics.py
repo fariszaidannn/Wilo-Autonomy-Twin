@@ -31,6 +31,7 @@ class Inputs:
     grid_on: bool = True
     generator_available: bool = False
     city_supply_on: bool = True
+    isolated: frozenset = frozenset()   # zones an operator has valved off (scenario mitigation only)
 
 
 def initial_state(b: Building, tank_m3: float | None = None) -> State:
@@ -103,7 +104,7 @@ def step(b: Building, state: State, inp: Inputs, dt_h: float) -> tuple[State, di
     # Requested flow per pump and per (zone, pump).
     req = {p.id: {} for p in b.pumps}
     for z in zones:
-        if shed[z.id]:
+        if shed[z.id] or z.id in inp.isolated:
             continue
         for pid, s in alloc[z.id].items():
             req[pid][z.id] = inp.demand_m3h.get(z.id, 0.0) * s
@@ -177,7 +178,7 @@ def step(b: Building, state: State, inp: Inputs, dt_h: float) -> tuple[State, di
             "unserved_m3h": max(0.0, demand - served), "pressure_bar": pressure,
             "pump_pressure_bar": p_pump, "pump_flow_ratio": pump_ratio, "flow_ratio": ratio,
             "in_service": in_service, "breached": below >= br_after - 1e-9,
-            "fed_by": fed, "shed_low_tank": shed[z.id], "buffer_m3": buf_new,
+            "fed_by": fed, "shed_low_tank": shed[z.id], "isolated": z.id in inp.isolated, "buffer_m3": buf_new,
         }
 
     q_out = sum(po["flow_m3h"] for po in pump_out.values())

@@ -19,6 +19,7 @@ from pydantic import BaseModel, Field
 from . import db, simulator, usage
 from .config import BUILDING_FILE, DEFAULT_BUILDING_FILE, ConfigError, check_raw, load_building, load_mapping
 from .twin import StalePlan, Twin
+from .xgb_provider import make_provider
 
 FRONTEND = Path(__file__).resolve().parents[2] / "frontend"
 EVAL_CACHE = Path(__file__).resolve().parents[1] / "data" / "outage" / "cache" / "evaluation.json"
@@ -75,7 +76,7 @@ class AppState:
         self.mapping = load_mapping()
         self.repo = db.make_repository(self.con, self.mapping)
         self.flows = self.repo.fetch_flows()
-        self.provider = usage.DemandProvider(self.b, self.flows)
+        self.provider = make_provider(self.b, self.flows)
         self.twin = Twin(self.b, self.con, self.provider)
         if start_clock:
             self.twin.start()
@@ -87,7 +88,7 @@ class AppState:
     def reload_usage(self):
         self.repo = db.make_repository(self.con, self.mapping)
         self.flows = self.repo.fetch_flows()
-        self.provider = usage.DemandProvider(self.b, self.flows)
+        self.provider = make_provider(self.b, self.flows)
         self.twin.set_provider(self.provider)
 
     def apply_building(self, raw: dict) -> list[str]:
@@ -106,7 +107,7 @@ class AppState:
                 db.reseed_demo(self.con, b)
             self.repo = db.make_repository(self.con, self.mapping)
             self.flows = self.repo.fetch_flows()
-            self.provider = usage.DemandProvider(b, self.flows)
+            self.provider = make_provider(b, self.flows)
             old = self.twin
             self.twin = Twin(b, self.con, self.provider)
             old.stop()
@@ -240,6 +241,35 @@ def create_app(start_clock: bool = True, warm_outage: bool = True, db_path: Path
             raise HTTPException(422, "Unknown pump")
         return simulator.run(s.b, s.twin.provider, s.twin.scenario_start(), body.scenario, body.horizon_h,
                              {"pump": body.pump, "generator": body.generator})
+
+    outlook_cache: dict = {}
+    outlook_lock = threading.Lock()
+
+    @app.get("/api/outlook")
+    def outage_outlook(event: str = "city_supply_cut", window_h: int = 12):
+        """Outage outlook for the Building tab, recomputed from the live twin state."""
+        if event not in simulator.OUTLOOK_EVENTS:
+            raise HTTPException(422, f"event must be one of {list(simulator.OUTLOOK_EVENTS)}")
+        if window_h not in (6, 12, 24):
+            raise HTTPException(422, "window_h must be 6, 12 or 24")
+        s = S()
+        twin, prov = s.twin, s.twin.provider
+        start = twin.scenario_start()
+        ctl = {k: v for k, v in start["controls"].items() if k not in ("speed", "running")}
+        # Everything the result depends on: building, demand model, the plant state and the event.
+        key = (id(twin.b), id(prov), event, window_h, start["sim_time"], repr(start["state"]),
+               json.dumps(ctl, sort_keys=True), json.dumps(start["allocation"], sort_keys=True))
+        with outlook_lock:
+            hit = outlook_cache.get(key)
+        if hit is not None:
+            return hit[2]
+        result = simulator.outlook(twin.b, prov, start, event, window_h)
+        with outlook_lock:
+            if len(outlook_cache) >= 16:
+                outlook_cache.pop(next(iter(outlook_cache)))
+            # Holding the building and provider keeps their id() from being reused while cached.
+            outlook_cache[key] = (twin.b, prov, result)
+        return result
 
     # ---------- usage and data ----------
     @app.get("/api/usage/summary")

@@ -10,6 +10,10 @@ const PATHS = {
   info: '<circle cx="12" cy="12" r="9" /><path d="M12 11v6M12 7.5v.3" />',
   dot: '<circle cx="12" cy="12" r="5" fill="currentColor" />',
   clock: '<circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" />',
+  timer: '<circle cx="12" cy="13.5" r="7.5" /><path d="M12 10v3.5l2.5 1.5M9.5 2.5h5M12 2.5V6" />',
+  gauge: '<path d="M4.6 18a8.5 8.5 0 1 1 14.8 0" /><path d="M12 14l4-4.5" />',
+  alarm: '<circle cx="12" cy="13" r="7.5" /><path d="M12 9.5V13l2.5 1.5M3.5 6L7 3M20.5 6L17 3" />',
+  flask: '<path d="M9.5 3h5M10.5 3v6L5.2 18.6A1.6 1.6 0 0 0 6.6 21h10.8a1.6 1.6 0 0 0 1.4-2.4L13.5 9V3" />',
 };
 
 export function icon(name, color = "currentColor", size = 18) {
